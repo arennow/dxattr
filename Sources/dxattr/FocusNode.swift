@@ -27,8 +27,17 @@ private extension FocusNode {
 	func withDXAttrs(_ body: (inout Set<DXAttr>) throws -> Void) throws {
 		var dxattrs = try self.dxattrs()
 		try body(&dxattrs)
-		let encodedData = try JSONEncoder().encode(dxattrs)
-		try self.sidecarFile.replaceContents(encodedData)
+
+		if dxattrs.isEmpty {
+			// If there are no dxattrs, remove the sidecar file if it exists
+			if let existingSidecarFile = try self.existingSidecarFile {
+				try existingSidecarFile.delete()
+			}
+			return
+		} else {
+			let encodedData = try JSONEncoder().encode(dxattrs)
+			try self.sidecarFile.replaceContents(encodedData)
+		}
 	}
 }
 

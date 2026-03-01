@@ -52,4 +52,12 @@ struct DXAttrCRUDTests {
 		try #expect(self.fn.dxattrs() == ["name2:value2"])
 		try #expect(self.fn.existingSidecarFile != nil)
 	}
+
+	@Test
+	func removingAllDXAttrsRemovesSidecarFile() throws {
+		try self.fn.setDXAttr(name: "name1", value: "value1")
+		try self.fn.removeDXAttr(name: "name1")
+		try #expect(self.fn.dxattrs() == [])
+		try #expect(self.fn.existingSidecarFile == nil)
+	}
 }
