@@ -1,26 +1,21 @@
 // swift-tools-version: 6.2
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
-let package = Package(
-    name: "dxattr",
-    products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
-        .library(
-            name: "dxattr",
-            targets: ["dxattr"]
-        ),
-    ],
-    targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
-        .target(
-            name: "dxattr"
-        ),
-        .testTarget(
-            name: "dxattrTests",
-            dependencies: ["dxattr"]
-        ),
-    ]
-)
+let package = Package(name: "dxattr",
+					  platforms: [
+					  	.macOS(.v10_15),
+					  ],
+					  products: [
+					  	.library(name: "dxattr",
+								   targets: ["dxattr"]),
+					  ],
+					  dependencies: [
+					  	.package(url: "https://github.com/arennow/Dirs", from: "0.12.1"),
+					  ],
+					  targets: [
+					  	.target(name: "dxattr",
+								  dependencies: ["Dirs"]),
+					  	.testTarget(name: "dxattrTests",
+									  dependencies: ["dxattr"]),
+					  ])

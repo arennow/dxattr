@@ -1,0 +1,51 @@
+{
+  "originHash" : "d647dd6e3348a9fa31ab0c840e23c2715a85da93c255034f08190e32d0bfa3f9",
+  "pins" : [
+    {
+      "identity" : "dirs",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/arennow/Dirs",
+      "state" : {
+        "revision" : "9bef26e2d538695bf5040b4cd5c527e69b2dccf0",
+        "version" : "0.12.1"
+      }
+    },
+    {
+      "identity" : "locked",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/arennow/Locked.git",
+      "state" : {
+        "revision" : "7555d7783fe6cd1cfcd59316295b116e337dd04a",
+        "version" : "2.0.0"
+      }
+    },
+    {
+      "identity" : "swift-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-algorithms.git",
+      "state" : {
+        "revision" : "87e50f483c54e6efd60e885f7f5aa946cee68023",
+        "version" : "1.2.1"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics.git",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
+      }
+    },
+    {
+      "identity" : "swift-system",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-system",
+      "state" : {
+        "revision" : "7c6ad0fc39d0763e0b699210e4124afd5041c5df",
+        "version" : "1.6.4"
+      }
+    }
+  ],
+  "version" : 3
+}
