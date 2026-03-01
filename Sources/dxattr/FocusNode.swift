@@ -24,41 +24,44 @@ private extension FocusNode {
 		}
 	}
 
+	func dxAttrsAndFile() throws -> (Set<DXAttr>, File?) {
+		guard let sidecarFile = try self.existingSidecarFile else {
+			return ([], nil)
+		}
+
+		let contents = try sidecarFile.contents()
+		do {
+			let dxattrs = try JSONDecoder().decode(Set<DXAttr>.self, from: contents)
+			return (dxattrs, sidecarFile)
+		} catch DecodingError.dataCorrupted(let context) {
+			if context.codingPath.isEmpty {
+				// If there's a data corruption at the root, the file is probably empty
+				// or otherwise not meaningful, so treat it as empty
+				return ([], sidecarFile)
+			} else {
+				throw DecodingError.dataCorrupted(context)
+			}
+		}
+	}
+
 	func withDXAttrs(_ body: (inout Set<DXAttr>) throws -> Void) throws {
-		var dxattrs = try self.dxattrs()
+		var (dxattrs, sidecarFile) = try self.dxAttrsAndFile()
 		try body(&dxattrs)
 
 		if dxattrs.isEmpty {
 			// If there are no dxattrs, remove the sidecar file if it exists
-			if let existingSidecarFile = try self.existingSidecarFile {
-				try existingSidecarFile.delete()
-			}
+			try sidecarFile?.delete()
 			return
 		} else {
 			let encodedData = try JSONEncoder().encode(dxattrs)
-			try self.sidecarFile.replaceContents(encodedData)
+			try (sidecarFile ?? self.sidecarFile).replaceContents(encodedData)
 		}
 	}
 }
 
 extension FocusNode {
 	func dxattrs() throws -> Set<DXAttr> {
-		guard let sidecarFile = try self.existingSidecarFile else {
-			return []
-		}
-
-		let contents = try sidecarFile.contents()
-		do {
-			return try JSONDecoder().decode(Set<DXAttr>.self, from: contents)
-		} catch DecodingError.dataCorrupted(let context) {
-			if context.codingPath.isEmpty {
-				// If there's a data corruption at the root, the file is probably empty
-				// or otherwise not meaningful, so treat it as empty
-				return []
-			} else {
-				throw DecodingError.dataCorrupted(context)
-			}
-		}
+		try self.dxAttrsAndFile().0
 	}
 
 	func setDXAttr(name: String, value: some IntoData) throws {
