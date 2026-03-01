@@ -1,5 +1,6 @@
 import Dirs
 @testable import dxattr
+import Foundation
 import Testing
 
 struct DXAttrCRUDTests {
@@ -14,7 +15,13 @@ struct DXAttrCRUDTests {
 	}
 
 	@Test
-	func newFileNoDXAttrs() {
-		#expect(self.fn.dxattrs.isEmpty)
+	func newFileNoDXAttrs() throws {
+		#expect(try self.fn.dxattrs() == [])
+	}
+
+	@Test
+	func addDXAttr() throws {
+		try self.fn.setDXAttr(name: "name", value: "value")
+		#expect(try self.fn.dxattrs() == [DXAttr(name: "name", value: Data("value".utf8))])
 	}
 }

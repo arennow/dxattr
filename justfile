@@ -7,5 +7,5 @@ report_errors:
 _impl_format *ARGS:
 	swiftformat {{ARGS}} .
 
-test:
-	swift test
+test *ARGS:
+	swift test {{ARGS}}
