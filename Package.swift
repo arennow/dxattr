@@ -11,7 +11,7 @@ let package = Package(name: "dxattr",
 								   targets: ["dxattr"]),
 					  ],
 					  dependencies: [
-					  	.package(url: "https://github.com/arennow/Dirs", from: "0.12.1"),
+					  	.package(url: "https://github.com/arennow/Dirs", from: "0.13.0"),
 					  ],
 					  targets: [
 					  	.target(name: "dxattr",

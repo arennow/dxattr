@@ -12,13 +12,20 @@ private extension FocusNode {
 			return try self.node.parent.newOrExistingFile(at: sidecarFileName)
 		}
 	}
+
+	func withDXAttrs(_ body: (inout Set<DXAttr>) throws -> Void) throws {
+		var dxattrs = try self.dxattrs()
+		try body(&dxattrs)
+		let encodedData = try JSONEncoder().encode(dxattrs)
+		try self.sidecarFile.replaceContents(encodedData)
+	}
 }
 
 extension FocusNode {
-	func dxattrs() throws -> Array<DXAttr> {
+	func dxattrs() throws -> Set<DXAttr> {
 		let contents = try self.sidecarFile.contents()
 		do {
-			return try JSONDecoder().decode(Array<DXAttr>.self, from: contents)
+			return try JSONDecoder().decode(Set<DXAttr>.self, from: contents)
 		} catch DecodingError.dataCorrupted(let context) {
 			if context.codingPath.isEmpty {
 				// If there's a data corruption at the root, the file is probably empty
@@ -31,8 +38,13 @@ extension FocusNode {
 	}
 
 	func setDXAttr(name: String, value: some IntoData) throws {
-		let newDXAttr = DXAttr(name: name, value: value.into())
-		let encodedData = try JSONEncoder().encode([newDXAttr])
-		try self.sidecarFile.replaceContents(encodedData)
+		try self.withDXAttrs { dxSet in
+			if let existingIndex = dxSet.firstIndex(where: { $0.name == name }) {
+				dxSet.remove(at: existingIndex)
+			}
+
+			let newDXAttr = DXAttr(name: name, value: value.into())
+			dxSet.insert(newDXAttr)
+		}
 	}
 }
