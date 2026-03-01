@@ -5,11 +5,22 @@ struct FocusNode {
 	let node: any Node
 }
 
+extension FocusNode {
+	var existingSidecarFile: File? {
+		get throws {
+			try self.node.parent.file(at: self.sidecarFileName)
+		}
+	}
+}
+
 private extension FocusNode {
+	private var sidecarFileName: String {
+		"._\(self.node.name).dxattrs"
+	}
+
 	var sidecarFile: File {
 		get throws {
-			let sidecarFileName = "._\(self.node.name).dxattrs"
-			return try self.node.parent.newOrExistingFile(at: sidecarFileName)
+			try self.node.parent.newOrExistingFile(at: self.sidecarFileName)
 		}
 	}
 
@@ -23,7 +34,11 @@ private extension FocusNode {
 
 extension FocusNode {
 	func dxattrs() throws -> Set<DXAttr> {
-		let contents = try self.sidecarFile.contents()
+		guard let sidecarFile = try self.existingSidecarFile else {
+			return []
+		}
+
+		let contents = try sidecarFile.contents()
 		do {
 			return try JSONDecoder().decode(Set<DXAttr>.self, from: contents)
 		} catch DecodingError.dataCorrupted(let context) {
