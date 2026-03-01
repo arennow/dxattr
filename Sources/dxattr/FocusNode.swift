@@ -47,4 +47,12 @@ extension FocusNode {
 			dxSet.insert(newDXAttr)
 		}
 	}
+
+	func removeDXAttr(name: String) throws {
+		try self.withDXAttrs { dxSet in
+			if let existingIndex = dxSet.firstIndex(where: { $0.name == name }) {
+				dxSet.remove(at: existingIndex)
+			}
+		}
+	}
 }
