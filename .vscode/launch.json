@@ -1,0 +1,24 @@
+{
+	"configurations": [
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:dxattr}",
+			"name": "Debug dxattr",
+			"target": "dxattr",
+			"configuration": "debug",
+			"preLaunchTask": "swift: Build Debug dxattr"
+		},
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:dxattr}",
+			"name": "Release dxattr",
+			"target": "dxattr",
+			"configuration": "release",
+			"preLaunchTask": "swift: Build Release dxattr"
+		}
+	]
+}

@@ -1,8 +1,12 @@
 import Dirs
 import Foundation
 
-struct FocusNode {
-	let node: any Node
+public struct FocusNode {
+	public let node: any Node
+
+	public init(node: any Node) {
+		self.node = node
+	}
 }
 
 extension FocusNode {
@@ -14,7 +18,7 @@ extension FocusNode {
 }
 
 private extension FocusNode {
-	private var sidecarFileName: String {
+	var sidecarFileName: String {
 		"._\(self.node.name).dxattrs"
 	}
 
@@ -59,7 +63,7 @@ private extension FocusNode {
 	}
 }
 
-extension FocusNode {
+public extension FocusNode {
 	func dxattrs() throws -> Set<DXAttr> {
 		try self.dxAttrsAndFile().0
 	}
@@ -81,5 +85,9 @@ extension FocusNode {
 				dxSet.remove(at: existingIndex)
 			}
 		}
+	}
+
+	func clearDXAttrs() throws {
+		try self.withDXAttrs { $0.removeAll() }
 	}
 }
