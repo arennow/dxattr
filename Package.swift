@@ -17,8 +17,19 @@ let package = Package(name: "dxattr",
 					  	.package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
 					  ],
 					  targets: [
+					  	.target(name: "CSQLite",
+								  path: "Sources/CSQLite",
+								  publicHeadersPath: ".",
+								  cSettings: [
+								  	.define("SQLITE_THREADSAFE", to: "1"),
+								  	.define("SQLITE_OMIT_LOAD_EXTENSION"),
+								  	.define("SQLITE_ENABLE_DESERIALIZE"),
+								  	.unsafeFlags([
+								  		"-Wno-ambiguous-macro",
+								  	]),
+								  ]),
 					  	.target(name: "libdxattr",
-								  dependencies: ["Dirs"]),
+								  dependencies: ["Dirs", "CSQLite"]),
 					  	.executableTarget(name: "dxattr",
 											dependencies: [
 												"libdxattr",
