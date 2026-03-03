@@ -2,7 +2,17 @@ import Dirs
 import Foundation
 
 struct SQLWrapper: ~Copyable {
+	enum StorageKind {
+		typealias SerializationLoadFunction = () throws -> Data?
+		typealias SerializationStoreFunction = (Data) throws -> Void
+
+		case raw(path: String)
+		case inMemory
+		case serializing(load: SerializationLoadFunction, store: SerializationStoreFunction)
+	}
+
 	let interface: SQLiteInterface
+	let serializationStoreFunction: StorageKind.SerializationStoreFunction?
 	private var hasPreparedTables = false
 
 	// We'll need the ability to borrow out of a dictionary to do this less stupidly
@@ -10,10 +20,34 @@ struct SQLWrapper: ~Copyable {
 	private var getAttributeStmt: SQLitePreparedStatement?
 	private var setAttributeStmt: SQLitePreparedStatement?
 
-	init(path: String) throws {
-		let db = try SQLiteInterface(path: path)
+	init(storage: StorageKind) throws {
+		let db: SQLiteInterface
+		switch storage {
+			case .raw(let path): db = try SQLiteInterface(path: path)
+			case .inMemory, .serializing: db = try SQLiteInterface(path: ":memory:")
+		}
+
 		try db.execute(query: "PRAGMA journal_mode = DELETE;")
+
+		if case .serializing(let load, let store) = storage {
+			if let data = try load() {
+				try db.deserialize(from: data)
+			}
+			self.serializationStoreFunction = store
+		} else {
+			self.serializationStoreFunction = nil
+		}
+
 		self.interface = db
+	}
+
+	deinit {
+		do {
+			try self.serializationStoreFunction?(try self.interface.serialize())
+		} catch {
+			// We can't really do anything about this, and we don't want to crash, so we'll just ignore it
+			print("Warning: Failed to serialize database on deinit: \(error)")
+		}
 	}
 }
 

@@ -2,11 +2,11 @@ import Foundation
 @testable import libdxattr
 import Testing
 
-struct SQLWrapperTests: ~Copyable {
+struct SQLWrapperInMemoryTests: ~Copyable {
 	var wrapper: SQLWrapper
 
 	init() throws {
-		self.wrapper = try SQLWrapper(path: ":memory:")
+		self.wrapper = try SQLWrapper(storage: .inMemory)
 	}
 
 	@Test
@@ -25,5 +25,59 @@ struct SQLWrapperTests: ~Copyable {
 
 		#expect(val1 == Data("value".utf8))
 		#expect(val1 == val2)
+	}
+}
+
+final class SQLWrapperSerializingTests {
+	private var persistence: Data?
+	private func createWrapper() throws -> SQLWrapper {
+		return try SQLWrapper(storage: .serializing(load: { self.persistence }, store: { self.persistence = $0 }))
+	}
+
+	@Test
+	func readEmpty() throws {
+		var wrapper = try self.createWrapper()
+
+		let val1 = try wrapper.getAttribute(name: "name")
+		let val2 = try wrapper.getAttribute(name: "name")
+		#expect(val1 == nil)
+		#expect(val2 == nil)
+
+		_ = consume wrapper
+		#expect(self.persistence != nil)
+
+		wrapper = try self.createWrapper()
+
+		let val3 = try wrapper.getAttribute(name: "name")
+		let val4 = try wrapper.getAttribute(name: "name")
+		#expect(val3 == nil)
+		#expect(val4 == nil)
+
+		_ = consume wrapper
+		#expect(self.persistence != nil)
+	}
+
+	@Test
+	func setNew() throws {
+		var wrapper = try self.createWrapper()
+
+		try wrapper.setAttribute(name: "name", value: "value")
+		let val1 = try wrapper.getAttribute(name: "name")
+		let val2 = try wrapper.getAttribute(name: "name")
+		#expect(val1 == Data("value".utf8))
+		#expect(val1 == val2)
+
+		_ = consume wrapper
+		#expect(self.persistence != nil)
+
+		wrapper = try self.createWrapper()
+
+		let val3 = try wrapper.getAttribute(name: "name")
+		let val4 = try wrapper.getAttribute(name: "name")
+		#expect(val3 == Data("value".utf8))
+		#expect(val3 == val4)
+
+		_ = consume wrapper
+		#expect(self.persistence != nil)
 	}
 }

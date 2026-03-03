@@ -19,7 +19,7 @@ public struct SQLiteInterface: ~Copyable {
 	}
 }
 
-private extension SQLiteInterface {
+extension SQLiteInterface {
 	func deserialize(from data: Data) throws {
 		let bufSize: sqlite3_uint64 = numericCast(data.count + 1_048_576) // + 1 MiB
 		let sqlManagedBuffer = sqlite3_malloc64(bufSize)
