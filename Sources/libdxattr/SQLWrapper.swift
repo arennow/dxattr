@@ -11,7 +11,9 @@ struct SQLWrapper: ~Copyable {
 	private var setAttributeStmt: SQLitePreparedStatement?
 
 	init(path: String) throws {
-		self.interface = try SQLiteInterface(path: path)
+		let db = try SQLiteInterface(path: path)
+		try db.execute(query: "PRAGMA journal_mode = DELETE;")
+		self.interface = db
 	}
 }
 

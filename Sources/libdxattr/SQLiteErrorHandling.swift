@@ -6,6 +6,10 @@ func sqlite_res_check(_ result: Int32) throws {
 	}
 }
 
+public enum SQLiteInterfaceError: Error {
+	case noSerializationData
+}
+
 public enum SQLiteErrorCode: Int32, Error, CustomStringConvertible {
 	case error = 1
 	case internalError = 2

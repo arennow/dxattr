@@ -1,4 +1,5 @@
 import CSQLite
+import Foundation
 
 public struct SQLiteInterface: ~Copyable {
 	let db: OpaquePointer
@@ -18,9 +19,36 @@ public struct SQLiteInterface: ~Copyable {
 	}
 }
 
-extension SQLiteInterface {
-	struct Row {
-		let columns: [String: String]
+private extension SQLiteInterface {
+	func deserialize(from data: Data) throws {
+		let bufSize: sqlite3_uint64 = numericCast(data.count + 1_048_576) // + 1 MiB
+		let sqlManagedBuffer = sqlite3_malloc64(bufSize)
+		data.withUnsafeBytes { srcBuf in
+			_ = memcpy(sqlManagedBuffer, srcBuf.baseAddress, srcBuf.count)
+		}
+
+		// `SQLITE_DESERIALIZE_RESIZEABLE` allows SQLite to resize the buffer as needed,
+		// and `SQLITE_DESERIALIZE_FREEONCLOSE` tells it to free the buffer when it's done with it,
+		// so we don't have to worry about freeing it ourselves
+
+		let res = sqlite3_deserialize(self.db,
+									  nil,
+									  sqlManagedBuffer,
+									  numericCast(data.count),
+									  numericCast(bufSize),
+									  numericCast(SQLITE_DESERIALIZE_RESIZEABLE | SQLITE_DESERIALIZE_FREEONCLOSE))
+		try sqlite_res_check(res)
+	}
+
+	func serialize() throws -> Data {
+		var bufSize: sqlite3_uint64 = 0
+		guard let sqlManagedBuffer = sqlite3_serialize(self.db, nil, &bufSize, 0) else {
+			throw SQLiteInterfaceError.noSerializationData
+		}
+
+		return Data(bytesNoCopy: sqlManagedBuffer,
+					count: numericCast(bufSize),
+					deallocator: .custom { (ptr, _) in sqlite3_free(ptr) })
 	}
 }
 
