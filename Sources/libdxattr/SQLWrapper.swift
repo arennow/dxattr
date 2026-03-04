@@ -19,6 +19,7 @@ struct SQLWrapper: ~Copyable {
 	// `WritableKeyPath` not requiring its elements to be `Copyable` would be good too
 	private var getAttributeStmt: SQLitePreparedStatement?
 	private var setAttributeStmt: SQLitePreparedStatement?
+	private var listNameStmt: SQLitePreparedStatement?
 
 	init(storage: StorageKind) throws {
 		let db: SQLiteInterface
@@ -89,6 +90,16 @@ private extension SQLWrapper {
 		}
 		return try body(self.setAttributeStmt!)
 	}
+
+	mutating func withListNameStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
+		try self.prepareTablesIfNeeded()
+
+		if self.listNameStmt == nil {
+			self.listNameStmt = try SQLitePreparedStatement(db: self.interface.db,
+															statementStr: "SELECT name FROM attrs;")
+		}
+		return try body(self.listNameStmt!)
+	}
 }
 
 extension SQLWrapper {
@@ -112,5 +123,29 @@ extension SQLWrapper {
 			let res = try stmt.step()
 			assert(res == false, "Expected step to return false after executing an INSERT statement, but got \(res)")
 		}
+	}
+
+	mutating func listAttributeNames() throws -> Set<String> {
+		try self.withListNameStmt { stmt in
+			try stmt.reset()
+			var names = Set<String>()
+			while try stmt.step() {
+				names.insert(try stmt.columnText(at: 0))
+			}
+			return names
+		}
+	}
+
+	mutating func getAllAttributes() throws -> Set<DXAttr> {
+		var out = Set<DXAttr>()
+
+		for name in try self.listAttributeNames() {
+			guard let value = try self.getAttribute(name: name) else {
+				continue
+			}
+			out.insert(DXAttr(name: name, value: value))
+		}
+
+		return out
 	}
 }

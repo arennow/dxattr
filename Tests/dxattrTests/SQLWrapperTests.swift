@@ -26,6 +26,23 @@ struct SQLWrapperInMemoryTests: ~Copyable {
 		#expect(val1 == Data("value".utf8))
 		#expect(val1 == val2)
 	}
+
+	@Test
+	mutating func listAttributeNames() throws {
+		try self.wrapper.setAttribute(name: "name1", value: "value1")
+		try self.wrapper.setAttribute(name: "name2", value: "value2")
+
+		try #expect(self.wrapper.listAttributeNames() == Set(["name1", "name2"]))
+		try #expect(self.wrapper.listAttributeNames() == Set(["name1", "name2"]))
+	}
+
+	@Test
+	mutating func getAllAttributes() throws {
+		try self.wrapper.setAttribute(name: "name1", value: "value1")
+		try self.wrapper.setAttribute(name: "name2", value: "value2")
+
+		try #expect(self.wrapper.getAllAttributes() == ["name1:value1", "name2:value2"])
+	}
 }
 
 final class SQLWrapperSerializingTests {

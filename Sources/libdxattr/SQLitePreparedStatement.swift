@@ -68,6 +68,14 @@ extension SQLitePreparedStatement {
 }
 
 extension SQLitePreparedStatement {
+	func columnText(at index: Int) throws -> String {
+		let index = Int32(index)
+		guard let cStrPtr = sqlite3_column_text(self.statementHandle, index) else {
+			return ""
+		}
+		return String(cString: cStrPtr)
+	}
+
 	func columnBlob(at index: Int) throws -> Data {
 		let index = Int32(index)
 		guard let blobPtr = sqlite3_column_blob(self.statementHandle, index) else {
