@@ -21,6 +21,18 @@ struct SQLWrapper: ~Copyable {
 	private var setAttributeStmt: SQLitePreparedStatement?
 	private var listNameStmt: SQLitePreparedStatement?
 
+	init(file: File) throws {
+		if file.fs is MockFSInterface {
+			try self.init(storage: .serializing(load: {
+				try file.contents()
+			}, store: { newValue in
+				try file.replaceContents(newValue)
+			}))
+		} else {
+			try self.init(storage: .raw(path: file.path.string))
+		}
+	}
+
 	init(storage: StorageKind) throws {
 		let db: SQLiteInterface
 		switch storage {

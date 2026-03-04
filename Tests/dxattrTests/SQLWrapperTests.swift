@@ -48,7 +48,7 @@ struct SQLWrapperInMemoryTests: ~Copyable {
 final class SQLWrapperSerializingTests {
 	private var persistence: Data?
 	private func createWrapper() throws -> SQLWrapper {
-		return try SQLWrapper(storage: .serializing(load: { self.persistence }, store: { self.persistence = $0 }))
+		try SQLWrapper(storage: .serializing(load: { self.persistence }, store: { self.persistence = $0 }))
 	}
 
 	@Test

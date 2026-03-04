@@ -33,19 +33,9 @@ private extension FocusNode {
 			return ([], nil)
 		}
 
-		let contents = try sidecarFile.contents()
-		do {
-			let dxattrs = try JSONDecoder().decode(Set<DXAttr>.self, from: contents)
-			return (dxattrs, sidecarFile)
-		} catch DecodingError.dataCorrupted(let context) {
-			if context.codingPath.isEmpty {
-				// If there's a data corruption at the root, the file is probably empty
-				// or otherwise not meaningful, so treat it as empty
-				return ([], sidecarFile)
-			} else {
-				throw DecodingError.dataCorrupted(context)
-			}
-		}
+		var wrapper = try SQLWrapper(file: sidecarFile)
+		let attrs = try wrapper.getAllAttributes()
+		return (attrs, sidecarFile)
 	}
 
 	func withDXAttrs(_ body: (inout Set<DXAttr>) throws -> Void) throws {
@@ -57,8 +47,12 @@ private extension FocusNode {
 			try sidecarFile?.delete()
 			return
 		} else {
-			let encodedData = try JSONEncoder().encode(dxattrs)
-			try (sidecarFile ?? self.sidecarFile).replaceContents(encodedData)
+			try sidecarFile?.delete()
+
+			var wrapper = try SQLWrapper(file: self.sidecarFile)
+			for dx in dxattrs {
+				try wrapper.setAttribute(name: dx.name, value: dx.value)
+			}
 		}
 	}
 }

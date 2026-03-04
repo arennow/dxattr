@@ -1,7 +1,7 @@
 import Dirs
 import Foundation
 
-public struct DXAttr: Hashable, Codable {
+public struct DXAttr: Hashable {
 	public let name: String
 	public let value: Data
 
