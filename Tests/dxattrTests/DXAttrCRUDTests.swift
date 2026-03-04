@@ -6,59 +6,80 @@ import Testing
 struct DXAttrCRUDTests {
 	let fs: MockFSInterface
 	let file: File
-	// This is computed in order to force the deinit to run, which is a proxy
-	// for individual CLI calls, for instance (in terms of serialization)
-	var fn: FocusNode { FocusNode(node: self.file) }
+	let sidecarFilePath: String
+	var sidecarFileExists: Bool {
+		get throws {
+			try self.fs.rootDir.file(at: self.sidecarFilePath) != nil
+		}
+	}
 
 	init() throws {
 		self.fs = MockFSInterface()
 		self.file = try self.fs.createFile(at: "/file")
+		self.sidecarFilePath = "/._file.dxattrs"
+	}
+
+	func withFN<R>(_ body: (inout FocusNode) throws -> R) rethrows -> R {
+		var fn = FocusNode(node: self.file)
+		return try body(&fn)
 	}
 
 	@Test
 	func newFileNoDXAttrs() throws {
-		try #expect(self.fn.existingSidecarFile == nil)
-		try #expect(self.fn.dxattrs() == [])
-		try #expect(self.fn.existingSidecarFile == nil)
+		try #expect(self.sidecarFileExists == false)
+		try self.withFN { fn in
+			try #expect(fn.dxattrs() == [])
+		}
+		try #expect(self.sidecarFileExists == false)
 	}
 
 	@Test
 	func addDXAttr() throws {
-		try self.fn.setDXAttr(name: "name", value: "value")
-		try #expect(self.fn.dxattrs() == ["name:value"])
-		try #expect(self.fn.existingSidecarFile != nil)
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name", value: "value")
+			try #expect(fn.dxattrs() == ["name:value"])
+		}
+		try #expect(self.sidecarFileExists == true)
 	}
 
 	@Test
 	func overwriteDXAttr() throws {
-		try self.fn.setDXAttr(name: "name", value: "value")
-		try self.fn.setDXAttr(name: "name", value: "newValue")
-		try #expect(self.fn.dxattrs() == ["name:newValue"])
-		try #expect(self.fn.existingSidecarFile != nil)
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name", value: "value")
+			try fn.setDXAttr(name: "name", value: "newValue")
+			try #expect(fn.dxattrs() == ["name:newValue"])
+		}
+		try #expect(self.sidecarFileExists == true)
 	}
 
 	@Test
 	func appendDXAttr() throws {
-		try self.fn.setDXAttr(name: "name1", value: "value1")
-		try self.fn.setDXAttr(name: "name2", value: "value2")
-		try #expect(self.fn.dxattrs() == ["name1:value1", "name2:value2"])
-		try #expect(self.fn.existingSidecarFile != nil)
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name1", value: "value1")
+			try fn.setDXAttr(name: "name2", value: "value2")
+			try #expect(fn.dxattrs() == ["name1:value1", "name2:value2"])
+		}
+		try #expect(self.sidecarFileExists == true)
 	}
 
 	@Test
 	func removeDXAttr() throws {
-		try self.fn.setDXAttr(name: "name1", value: "value1")
-		try self.fn.setDXAttr(name: "name2", value: "value2")
-		try self.fn.removeDXAttr(name: "name1")
-		try #expect(self.fn.dxattrs() == ["name2:value2"])
-		try #expect(self.fn.existingSidecarFile != nil)
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name1", value: "value1")
+			try fn.setDXAttr(name: "name2", value: "value2")
+			try fn.removeDXAttr(name: "name1")
+			try #expect(fn.dxattrs() == ["name2:value2"])
+		}
+		try #expect(self.sidecarFileExists == true)
 	}
 
 	@Test
 	func removingAllDXAttrsRemovesSidecarFile() throws {
-		try self.fn.setDXAttr(name: "name1", value: "value1")
-		try self.fn.removeDXAttr(name: "name1")
-		try #expect(self.fn.dxattrs() == [])
-		try #expect(self.fn.existingSidecarFile == nil)
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name1", value: "value1")
+			try fn.removeDXAttr(name: "name1")
+			try #expect(fn.dxattrs() == [])
+		}
+		try #expect(self.sidecarFileExists == false)
 	}
 }

@@ -9,17 +9,15 @@ public struct FocusNode: ~Copyable {
 	}
 }
 
-extension FocusNode {
+private extension FocusNode {
+	var sidecarFileName: String {
+		"._\(self.node.name).dxattrs"
+	}
+
 	var existingSidecarFile: File? {
 		get throws {
 			try self.node.parent.file(at: self.sidecarFileName)
 		}
-	}
-}
-
-private extension FocusNode {
-	var sidecarFileName: String {
-		"._\(self.node.name).dxattrs"
 	}
 
 	var sidecarFile: File {
