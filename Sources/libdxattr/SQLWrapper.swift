@@ -19,7 +19,8 @@ struct SQLWrapper: ~Copyable {
 	// `WritableKeyPath` not requiring its elements to be `Copyable` would be good too
 	private var getAttributeStmt: SQLitePreparedStatement?
 	private var setAttributeStmt: SQLitePreparedStatement?
-	private var listNameStmt: SQLitePreparedStatement?
+	private var listNamesStmt: SQLitePreparedStatement?
+	private var removeAttributeStmt: SQLitePreparedStatement?
 
 	init(file: File) throws {
 		if file.fs is MockFSInterface {
@@ -57,9 +58,27 @@ struct SQLWrapper: ~Copyable {
 	deinit {
 		do {
 			try self.serializationStoreFunction?(try self.interface.serialize())
+		} catch is NoSuchNode {
+			#if os(Windows)
+				#warning("This might be unsafe on Windows")
+			#endif
+			// This can happen if the database file was deleted while the db connection is open
+			// That's fine on UNIX systems, since their file handle remains open even after
+			// a delete
 		} catch {
 			// We can't really do anything about this, and we don't want to crash, so we'll just ignore it
-			print("Warning: Failed to serialize database on deinit: \(error)")
+			fputs("Warning: Failed to serialize database on deinit: \(error)\n", stderr)
+		}
+	}
+
+	func canDelete() throws -> Bool {
+		do {
+			try self.interface.execute(query: "BEGIN EXCLUSIVE;")
+			let tableHasContent = try self.interface.queryProducesRows(query: "SELECT 1 FROM attrs LIMIT 1;")
+			try self.interface.execute(query: "COMMIT;")
+			return !tableHasContent
+		} catch SQLiteErrorCode.busy, SQLiteErrorCode.locked {
+			return true
 		}
 	}
 }
@@ -67,10 +86,10 @@ struct SQLWrapper: ~Copyable {
 private extension SQLWrapper {
 	mutating func prepareTables() throws {
 		try self.interface.execute(query: """
-			CREATE TABLE IF NOT EXISTS attrs (
-				name TEXT PRIMARY KEY,
-				value BLOB
-			) WITHOUT ROWID;
+		CREATE TABLE IF NOT EXISTS attrs (
+			name TEXT PRIMARY KEY,
+			value BLOB
+		) WITHOUT ROWID;
 		""")
 
 		self.hasPreparedTables = true
@@ -103,14 +122,24 @@ private extension SQLWrapper {
 		return try body(self.setAttributeStmt!)
 	}
 
-	mutating func withListNameStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
+	mutating func withListNamesStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
 		try self.prepareTablesIfNeeded()
 
-		if self.listNameStmt == nil {
-			self.listNameStmt = try SQLitePreparedStatement(db: self.interface.db,
-															statementStr: "SELECT name FROM attrs;")
+		if self.listNamesStmt == nil {
+			self.listNamesStmt = try SQLitePreparedStatement(db: self.interface.db,
+															 statementStr: "SELECT name FROM attrs;")
 		}
-		return try body(self.listNameStmt!)
+		return try body(self.listNamesStmt!)
+	}
+
+	mutating func withRemoveAttributeStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
+		try self.prepareTablesIfNeeded()
+
+		if self.removeAttributeStmt == nil {
+			self.removeAttributeStmt = try SQLitePreparedStatement(db: self.interface.db,
+																   statementStr: "DELETE FROM attrs WHERE name = ?;")
+		}
+		return try body(self.removeAttributeStmt!)
 	}
 }
 
@@ -138,7 +167,7 @@ extension SQLWrapper {
 	}
 
 	mutating func listAttributeNames() throws -> Set<String> {
-		try self.withListNameStmt { stmt in
+		try self.withListNamesStmt { stmt in
 			try stmt.reset()
 			var names = Set<String>()
 			while try stmt.step() {
@@ -159,5 +188,18 @@ extension SQLWrapper {
 		}
 
 		return out
+	}
+
+	mutating func removeAttribute(name: String) throws {
+		try self.withRemoveAttributeStmt { stmt in
+			try stmt.reset()
+			try stmt.bindText(name, at: 1)
+			let res = try stmt.step()
+			assert(res == false, "Expected step to return false after executing a DELETE statement, but got \(res)")
+		}
+	}
+
+	mutating func clearAllAttributes() throws {
+		try self.interface.execute(query: "DELETE FROM attrs;")
 	}
 }

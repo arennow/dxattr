@@ -17,6 +17,11 @@ public struct SQLiteInterface: ~Copyable {
 	public func execute(query: String) throws {
 		try sqlite_res_check(sqlite3_exec(self.db, query, nil, nil, nil))
 	}
+
+	public func queryProducesRows(query: String) throws -> Bool {
+		let stmt = try SQLitePreparedStatement(db: self.db, statementStr: query)
+		return try stmt.step()
+	}
 }
 
 extension SQLiteInterface {
@@ -52,5 +57,6 @@ extension SQLiteInterface {
 	}
 }
 
+// periphery:ignore - Just for parallelism with `SQLITE_TRANSIENT`
 let SQLITE_STATIC = unsafeBitCast(0, to: sqlite3_destructor_type.self)
 let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)

@@ -74,6 +74,17 @@ struct DXAttrCRUDTests {
 	}
 
 	@Test
+	func clearDXAttrs() throws {
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name1", value: "value1")
+			try fn.setDXAttr(name: "name2", value: "value2")
+			try fn.clearDXAttrs()
+			try #expect(fn.dxattrs() == [])
+		}
+		try #expect(self.sidecarFileExists == false)
+	}
+
+	@Test
 	func removingAllDXAttrsRemovesSidecarFile() throws {
 		try self.withFN { fn in
 			try fn.setDXAttr(name: "name1", value: "value1")

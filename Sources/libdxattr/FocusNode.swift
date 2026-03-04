@@ -3,9 +3,33 @@ import Foundation
 
 public struct FocusNode: ~Copyable {
 	public let node: any Node
+	private var sqlWrapper: SQLWrapper?
 
 	public init(node: any Node) {
 		self.node = node
+	}
+
+	deinit {
+		do {
+			if try self.sqlWrapper?.canDelete() == true {
+				#if os(Windows)
+					#warning("This might be unsafe on Windows")
+				#endif
+				// On UNIX, it's safe to delete the file while the DB is still open
+				// (`sqlWrapper != nil`). Windows platforms may have issues
+				try self.existingSidecarFile?.delete()
+			}
+		} catch {
+			fputs("Warning: Failed to delete sidecar file for node '\(self.node.name)': \(error.localizedDescription)\n", stderr)
+		}
+	}
+
+	private mutating func withSQLWrapper<R>(_ body: (inout SQLWrapper) throws -> R) throws -> R {
+		if self.sqlWrapper == nil {
+			self.sqlWrapper = try SQLWrapper(file: self.sidecarFile)
+		}
+
+		return try body(&self.sqlWrapper!)
 	}
 }
 
@@ -25,61 +49,30 @@ private extension FocusNode {
 			try self.node.parent.newOrExistingFile(at: self.sidecarFileName)
 		}
 	}
-
-	func dxAttrsAndFile() throws -> (Set<DXAttr>, File?) {
-		guard let sidecarFile = try self.existingSidecarFile else {
-			return ([], nil)
-		}
-
-		var wrapper = try SQLWrapper(file: sidecarFile)
-		let attrs = try wrapper.getAllAttributes()
-		return (attrs, sidecarFile)
-	}
-
-	func withDXAttrs(_ body: (inout Set<DXAttr>) throws -> Void) throws {
-		var (dxattrs, sidecarFile) = try self.dxAttrsAndFile()
-		try body(&dxattrs)
-
-		if dxattrs.isEmpty {
-			// If there are no dxattrs, remove the sidecar file if it exists
-			try sidecarFile?.delete()
-			return
-		} else {
-			try sidecarFile?.delete()
-
-			var wrapper = try SQLWrapper(file: self.sidecarFile)
-			for dx in dxattrs {
-				try wrapper.setAttribute(name: dx.name, value: dx.value)
-			}
-		}
-	}
 }
 
 public extension FocusNode {
-	func dxattrs() throws -> Set<DXAttr> {
-		try self.dxAttrsAndFile().0
-	}
-
-	func setDXAttr(name: String, value: some IntoData) throws {
-		try self.withDXAttrs { dxSet in
-			if let existingIndex = dxSet.firstIndex(where: { $0.name == name }) {
-				dxSet.remove(at: existingIndex)
-			}
-
-			let newDXAttr = DXAttr(name: name, value: value.into())
-			dxSet.insert(newDXAttr)
+	mutating func dxattrs() throws -> Set<DXAttr> {
+		try self.withSQLWrapper { wrapper in
+			try wrapper.getAllAttributes()
 		}
 	}
 
-	func removeDXAttr(name: String) throws {
-		try self.withDXAttrs { dxSet in
-			if let existingIndex = dxSet.firstIndex(where: { $0.name == name }) {
-				dxSet.remove(at: existingIndex)
-			}
+	mutating func setDXAttr(name: String, value: some IntoData) throws {
+		try self.withSQLWrapper { wrapper in
+			try wrapper.setAttribute(name: name, value: value.into())
 		}
 	}
 
-	func clearDXAttrs() throws {
-		try self.withDXAttrs { $0.removeAll() }
+	mutating func removeDXAttr(name: String) throws {
+		try self.withSQLWrapper { wrapper in
+			try wrapper.removeAttribute(name: name)
+		}
+	}
+
+	mutating func clearDXAttrs() throws {
+		try self.withSQLWrapper { wrapper in
+			try wrapper.clearAllAttributes()
+		}
 	}
 }

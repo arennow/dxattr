@@ -29,6 +29,7 @@ struct SQLitePreparedStatement: ~Copyable {
 		try sqlite_res_check(sqlite3_reset(self.statementHandle))
 	}
 
+	// TODO: Return an enum instead of Bool to distinguish between "row available", "done", and "error" states
 	func step() throws -> Bool {
 		let res = sqlite3_step(self.statementHandle)
 		switch res {

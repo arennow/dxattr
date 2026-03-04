@@ -35,7 +35,7 @@ extension DXAttrCommand {
 		var file: String
 
 		func run() throws {
-			let fn = try makeFocusNode(path: file)
+			var fn = try makeFocusNode(path: file)
 			let attrs = try fn.dxattrs().sorted { $0.name < $1.name }
 			for attr in attrs {
 				if self.verbose {
@@ -60,7 +60,7 @@ extension DXAttrCommand {
 		var file: String
 
 		func run() throws {
-			let fn = try makeFocusNode(path: file)
+			var fn = try makeFocusNode(path: file)
 			let attrs = try fn.dxattrs()
 			guard let attr = attrs.first(where: { $0.name == name }) else {
 				throw ValidationError("No such dxattr: \(self.name)")
@@ -87,7 +87,7 @@ extension DXAttrCommand {
 		var file: String
 
 		func run() throws {
-			let fn = try makeFocusNode(path: file)
+			var fn = try makeFocusNode(path: file)
 			try fn.setDXAttr(name: self.name, value: self.value)
 		}
 	}
@@ -102,7 +102,7 @@ extension DXAttrCommand {
 		var file: String
 
 		func run() throws {
-			let fn = try makeFocusNode(path: file)
+			var fn = try makeFocusNode(path: file)
 			try fn.removeDXAttr(name: self.name)
 		}
 	}
@@ -114,7 +114,7 @@ extension DXAttrCommand {
 		var file: String
 
 		func run() throws {
-			let fn = try makeFocusNode(path: file)
+			var fn = try makeFocusNode(path: file)
 			try fn.clearDXAttrs()
 		}
 	}
