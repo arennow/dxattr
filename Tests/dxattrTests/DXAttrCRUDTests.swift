@@ -6,12 +6,13 @@ import Testing
 struct DXAttrCRUDTests {
 	let fs: MockFSInterface
 	let file: File
-	let fn: FocusNode
+	// This is computed in order to force the deinit to run, which is a proxy
+	// for individual CLI calls, for instance (in terms of serialization)
+	var fn: FocusNode { FocusNode(node: self.file) }
 
 	init() throws {
 		self.fs = MockFSInterface()
 		self.file = try self.fs.createFile(at: "/file")
-		self.fn = FocusNode(node: self.file)
 	}
 
 	@Test

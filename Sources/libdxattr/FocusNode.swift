@@ -1,7 +1,7 @@
 import Dirs
 import Foundation
 
-public struct FocusNode {
+public struct FocusNode: ~Copyable {
 	public let node: any Node
 
 	public init(node: any Node) {
