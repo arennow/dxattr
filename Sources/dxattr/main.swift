@@ -53,11 +53,11 @@ extension DXAttrCommand {
 		@Flag(name: .customShort("v"), help: "Print in 'name: value' format.")
 		var verbose = false
 
-		@Argument(help: "The dxattr name to read.")
-		var name: String
-
 		@Argument(help: "The file or directory to inspect.")
 		var file: String
+
+		@Argument(help: "The dxattr name to read.")
+		var name: String
 
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
@@ -77,29 +77,46 @@ extension DXAttrCommand {
 	struct Write: ParsableCommand {
 		static let configuration = CommandConfiguration(abstract: "Write (upsert) a dxattr on a file.")
 
-		@Argument(help: "The dxattr name to write.")
-		var name: String
-
-		@Argument(help: "The value to store.")
-		var value: String
+		@Flag(name: [.customShort("s"), .long], help: "Read value from stdin.")
+		var stdin: Bool = false
 
 		@Argument(help: "The file or directory to modify.")
 		var file: String
 
+		@Argument(help: "The dxattr name to write.")
+		var name: String
+
+		@Argument(help: "The value to store. Omit when reading from stdin (-s).")
+		var value: String?
+
+		func validate() throws {
+			if self.stdin, self.value != nil {
+				throw ValidationError("Provide either a value argument or --stdin, not both.")
+			}
+			if !self.stdin, self.value == nil {
+				throw ValidationError("Provide a value argument or --stdin to read from stdin.")
+			}
+		}
+
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
-			try fn.setDXAttr(name: self.name, value: self.value)
+			if let value {
+				try fn.setDXAttr(name: self.name, value: value)
+			} else {
+				let data = FileHandle.standardInput.readDataToEndOfFile()
+				try fn.setDXAttr(name: self.name, value: data)
+			}
 		}
 	}
 
 	struct Delete: ParsableCommand {
 		static let configuration = CommandConfiguration(abstract: "Delete a named dxattr from a file.")
 
-		@Argument(help: "The dxattr name to delete.")
-		var name: String
-
 		@Argument(help: "The file or directory to modify.")
 		var file: String
+
+		@Argument(help: "The dxattr name to delete.")
+		var name: String
 
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
