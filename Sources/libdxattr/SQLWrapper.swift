@@ -22,6 +22,7 @@ struct SQLWrapper: ~Copyable {
 	private var listNamesStmt: SQLitePreparedStatement?
 	private var listNamesWithValueLengthsStmt: SQLitePreparedStatement?
 	private var removeAttributeStmt: SQLitePreparedStatement?
+	private var clearAllAttributesStmt: SQLitePreparedStatement?
 
 	init(file: File) throws {
 		if file.fs is MockFSInterface {
@@ -152,6 +153,16 @@ private extension SQLWrapper {
 		}
 		return try body(self.removeAttributeStmt!)
 	}
+
+	mutating func withClearAllAttributesStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
+		try self.prepareTablesIfNeeded()
+
+		if self.clearAllAttributesStmt == nil {
+			self.clearAllAttributesStmt = try SQLitePreparedStatement(db: self.interface.db,
+																	  statementStr: "DELETE FROM attrs;")
+		}
+		return try body(self.clearAllAttributesStmt!)
+	}
 }
 
 extension SQLWrapper {
@@ -222,6 +233,10 @@ extension SQLWrapper {
 	}
 
 	mutating func clearAllAttributes() throws {
-		try self.interface.execute(query: "DELETE FROM attrs;")
+		try self.withClearAllAttributesStmt { stmt in
+			try stmt.reset()
+			let res = try stmt.step()
+			assert(res == .done, "Expected step to return .done after executing a DELETE statement, but got \(res)")
+		}
 	}
 }
