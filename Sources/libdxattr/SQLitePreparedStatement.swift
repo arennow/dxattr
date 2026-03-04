@@ -89,4 +89,9 @@ extension SQLitePreparedStatement {
 		let blobSize = sqlite3_column_bytes(self.statementHandle, index)
 		return Data(bytes: blobPtr, count: numericCast(blobSize))
 	}
+
+	func columnInt(at index: Int) throws -> Int {
+		let index = Int32(index)
+		return numericCast(sqlite3_column_int(self.statementHandle, index))
+	}
 }

@@ -20,6 +20,7 @@ struct SQLWrapper: ~Copyable {
 	private var getAttributeStmt: SQLitePreparedStatement?
 	private var setAttributeStmt: SQLitePreparedStatement?
 	private var listNamesStmt: SQLitePreparedStatement?
+	private var listNamesWithValueLengthsStmt: SQLitePreparedStatement?
 	private var removeAttributeStmt: SQLitePreparedStatement?
 
 	init(file: File) throws {
@@ -132,6 +133,16 @@ private extension SQLWrapper {
 		return try body(self.listNamesStmt!)
 	}
 
+	mutating func withListNamesWithValueLengthsStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
+		try self.prepareTablesIfNeeded()
+
+		if self.listNamesWithValueLengthsStmt == nil {
+			self.listNamesWithValueLengthsStmt = try SQLitePreparedStatement(db: self.interface.db,
+																			 statementStr: "SELECT name, LENGTH(value) FROM attrs;")
+		}
+		return try body(self.listNamesWithValueLengthsStmt!)
+	}
+
 	mutating func withRemoveAttributeStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
 		try self.prepareTablesIfNeeded()
 
@@ -174,6 +185,17 @@ extension SQLWrapper {
 				names.insert(try stmt.columnText(at: 0))
 			}
 			return names
+		}
+	}
+
+	mutating func listAttributeNamesWithValueLengths() throws -> Array<(name: String, length: Int)> {
+		try self.withListNamesWithValueLengthsStmt { stmt in
+			try stmt.reset()
+			var out = Array<(name: String, length: Int)>()
+			while try stmt.step() == .row {
+				out.append((name: try stmt.columnText(at: 0), length: try stmt.columnInt(at: 1)))
+			}
+			return out
 		}
 	}
 

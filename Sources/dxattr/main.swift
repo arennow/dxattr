@@ -14,7 +14,6 @@ func makeFocusNode(path: String) throws -> FocusNode {
 	return FocusNode(node: node)
 }
 
-@main
 struct DXAttrCommand: ParsableCommand {
 	static let configuration = CommandConfiguration(commandName: "dxattr",
 													abstract: "Read and write dxattrs on files and directories.",
@@ -40,16 +39,11 @@ extension DXAttrCommand {
 			if self.verbose {
 				let attrs = try fn.dxattrs()
 				for attr in attrs {
-					if self.verbose {
-						print("\(attr.name): \(String(decoding: attr.value, as: UTF8.self))")
-					} else {
-						print(attr.name)
-					}
+					print("\(attr.name): \(String(decoding: attr.value, as: UTF8.self))")
 				}
 			} else {
-				let names = try fn.dxattrNames()
-				for name in names {
-					print(name)
+				for (name, length) in try fn.dxattrNamesAndValueLengths() {
+					print("\(name): \(length.usFormatted) bytes")
 				}
 			}
 		}
@@ -144,3 +138,5 @@ extension DXAttrCommand {
 		}
 	}
 }
+
+DXAttrCommand.main()

@@ -39,4 +39,6 @@ let package = Package(name: "dxattr",
 											]),
 					  	.testTarget(name: "libdxattrTests",
 									  dependencies: ["libdxattr"]),
+					  	.testTarget(name: "dxattrTests",
+									  dependencies: ["dxattr"]),
 					  ])

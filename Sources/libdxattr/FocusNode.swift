@@ -58,6 +58,12 @@ public extension FocusNode {
 		}
 	}
 
+	mutating func dxattrNamesAndValueLengths() throws -> Array<(name: String, length: Int)> {
+		try self.withSQLWrapper { wrapper in
+			try wrapper.listAttributeNamesWithValueLengths()
+		}
+	}
+
 	mutating func dxattrs() throws -> Set<DXAttr> {
 		try self.withSQLWrapper { wrapper in
 			try wrapper.getAllAttributes()
