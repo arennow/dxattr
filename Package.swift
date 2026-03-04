@@ -37,6 +37,6 @@ let package = Package(name: "dxattr",
 												.product(name: "ArgumentParser",
 														 package: "swift-argument-parser"),
 											]),
-					  	.testTarget(name: "dxattrTests",
+					  	.testTarget(name: "libdxattrTests",
 									  dependencies: ["libdxattr"]),
 					  ])
