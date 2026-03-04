@@ -148,7 +148,7 @@ extension SQLWrapper {
 		try self.withGetAttributeStmt { stmt in
 			try stmt.reset()
 			try stmt.bindText(name, at: 1)
-			if try stmt.step() {
+			if try stmt.step() == .row {
 				return try stmt.columnBlob(at: 0)
 			} else {
 				return nil
@@ -162,7 +162,7 @@ extension SQLWrapper {
 			try stmt.bindText(name, at: 1)
 			try stmt.bindBlob(value, at: 2)
 			let res = try stmt.step()
-			assert(res == false, "Expected step to return false after executing an INSERT statement, but got \(res)")
+			assert(res == .done, "Expected step to return .done after executing an INSERT statement, but got \(res)")
 		}
 	}
 
@@ -170,7 +170,7 @@ extension SQLWrapper {
 		try self.withListNamesStmt { stmt in
 			try stmt.reset()
 			var names = Set<String>()
-			while try stmt.step() {
+			while try stmt.step() == .row {
 				names.insert(try stmt.columnText(at: 0))
 			}
 			return names
@@ -195,7 +195,7 @@ extension SQLWrapper {
 			try stmt.reset()
 			try stmt.bindText(name, at: 1)
 			let res = try stmt.step()
-			assert(res == false, "Expected step to return false after executing a DELETE statement, but got \(res)")
+			assert(res == .done, "Expected step to return .done after executing a DELETE statement, but got \(res)")
 		}
 	}
 

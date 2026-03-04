@@ -3,6 +3,11 @@ import Dirs
 import Foundation
 
 struct SQLitePreparedStatement: ~Copyable {
+	enum StepResult {
+		case row
+		case done
+	}
+
 	let statementHandle: OpaquePointer
 
 	init(db: OpaquePointer, statementStr: String) throws {
@@ -29,14 +34,13 @@ struct SQLitePreparedStatement: ~Copyable {
 		try sqlite_res_check(sqlite3_reset(self.statementHandle))
 	}
 
-	// TODO: Return an enum instead of Bool to distinguish between "row available", "done", and "error" states
-	func step() throws -> Bool {
+	func step() throws -> StepResult {
 		let res = sqlite3_step(self.statementHandle)
 		switch res {
 			case SQLITE_ROW:
-				return true
+				return .row
 			case SQLITE_DONE:
-				return false
+				return .done
 			default:
 				try sqlite_res_check(res)
 				fatalError("sqlite_res_check should have thrown an error for code \(res)")

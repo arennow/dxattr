@@ -20,7 +20,7 @@ public struct SQLiteInterface: ~Copyable {
 
 	public func queryProducesRows(query: String) throws -> Bool {
 		let stmt = try SQLitePreparedStatement(db: self.db, statementStr: query)
-		return try stmt.step()
+		return try stmt.step() == .row
 	}
 }
 
