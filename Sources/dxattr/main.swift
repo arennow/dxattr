@@ -36,12 +36,20 @@ extension DXAttrCommand {
 
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
-			let attrs = try fn.dxattrs().sorted { $0.name < $1.name }
-			for attr in attrs {
-				if self.verbose {
-					print("\(attr.name): \(String(decoding: attr.value, as: UTF8.self))")
-				} else {
-					print(attr.name)
+
+			if self.verbose {
+				let attrs = try fn.dxattrs()
+				for attr in attrs {
+					if self.verbose {
+						print("\(attr.name): \(String(decoding: attr.value, as: UTF8.self))")
+					} else {
+						print(attr.name)
+					}
+				}
+			} else {
+				let names = try fn.dxattrNames()
+				for name in names {
+					print(name)
 				}
 			}
 		}
