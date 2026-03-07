@@ -34,4 +34,18 @@ struct ReadonlyTests {
 		try #expect(fn.dxattrMetadata() == [DXAttrMetadata(name: "name", valueLength: 6)])
 		try #expect(fn.dxattrs() == ["name:value!"])
 	}
+
+	@Test
+	func noMutationsOnFocusNode() throws {
+		try self.file.replaceContents("original")
+		try self.fs.setWritableForTesting(at: self.file, writable: false)
+
+		var fn = FocusNode(node: self.file)
+		try fn.setDXAttr(name: "name", value: "value!")
+
+		try #expect(fn.dxattrNames() == ["name"])
+		try #expect(fn.dxattrMetadata() == [DXAttrMetadata(name: "name", valueLength: 6)])
+		try #expect(fn.dxattrs() == ["name:value!"])
+		try #expect(self.file.stringContents() == "original")
+	}
 }
