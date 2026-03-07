@@ -56,8 +56,14 @@ struct DXAttrCRUDTests {
 	func appendDXAttr() throws {
 		try self.withFN { fn in
 			try fn.setDXAttr(name: "name1", value: "value1")
-			try fn.setDXAttr(name: "name2", value: "value2")
-			try #expect(fn.dxattrs() == ["name1:value1", "name2:value2"])
+			try fn.setDXAttr(name: "name2", value: "value2!!!")
+
+			try #expect(fn.dxattrNames() == ["name1", "name2"])
+			try #expect(fn.dxattrMetadata() == [
+				DXAttrMetadata(name: "name1", valueLength: 6),
+				DXAttrMetadata(name: "name2", valueLength: 9),
+			])
+			try #expect(fn.dxattrs() == ["name1:value1", "name2:value2!!!"])
 		}
 		try #expect(self.sidecarFileExists == true)
 	}

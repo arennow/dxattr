@@ -24,9 +24,21 @@ public struct FocusNode: ~Copyable {
 		}
 	}
 
+	private mutating func withSQLWrapperIfFileExists<R>(_ body: (inout SQLWrapper) throws -> R) throws -> R? {
+		if let sidecarFile = try self.existingSidecarFile {
+			return try self.withSQLWrapper(file: sidecarFile, body)
+		} else {
+			return nil
+		}
+	}
+
 	private mutating func withSQLWrapper<R>(_ body: (inout SQLWrapper) throws -> R) throws -> R {
+		try self.withSQLWrapper(file: self.sidecarFile, body)
+	}
+
+	private mutating func withSQLWrapper<R>(file: File, _ body: (inout SQLWrapper) throws -> R) throws -> R {
 		if self.sqlWrapper == nil {
-			self.sqlWrapper = try SQLWrapper(file: self.sidecarFile)
+			self.sqlWrapper = try SQLWrapper(file: file)
 		}
 
 		return try body(&self.sqlWrapper!)
@@ -53,21 +65,21 @@ private extension FocusNode {
 
 public extension FocusNode {
 	mutating func dxattrNames() throws -> Set<String> {
-		try self.withSQLWrapper { wrapper in
+		try self.withSQLWrapperIfFileExists { wrapper in
 			try wrapper.listAttributeNames()
-		}
+		} ?? []
 	}
 
 	mutating func dxattrMetadata() throws -> Set<DXAttrMetadata> {
-		try self.withSQLWrapper { wrapper in
+		try self.withSQLWrapperIfFileExists { wrapper in
 			try wrapper.listAttributeNamesWithValueLengths()
-		}
+		} ?? []
 	}
 
 	mutating func dxattrs() throws -> Set<DXAttr> {
-		try self.withSQLWrapper { wrapper in
+		try self.withSQLWrapperIfFileExists { wrapper in
 			try wrapper.getAllAttributes()
-		}
+		} ?? []
 	}
 
 	mutating func setDXAttr(name: String, value: some IntoData) throws {
