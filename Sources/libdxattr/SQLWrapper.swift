@@ -199,12 +199,13 @@ extension SQLWrapper {
 		}
 	}
 
-	mutating func listAttributeNamesWithValueLengths() throws -> Array<(name: String, length: Int)> {
+	mutating func listAttributeNamesWithValueLengths() throws -> Set<DXAttrMetadata> {
 		try self.withListNamesWithValueLengthsStmt { stmt in
 			try stmt.reset()
-			var out = Array<(name: String, length: Int)>()
+			var out = Set<DXAttrMetadata>()
 			while try stmt.step() == .row {
-				out.append((name: try stmt.columnText(at: 0), length: try stmt.columnInt(at: 1)))
+				out.insert(DXAttrMetadata(name: try stmt.columnText(at: 0),
+										  valueLength: try stmt.columnInt(at: 1)))
 			}
 			return out
 		}

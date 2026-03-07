@@ -42,8 +42,8 @@ extension DXAttrCommand {
 					print("\(attr.name): \(String(decoding: attr.value, as: UTF8.self))")
 				}
 			} else {
-				for (name, length) in try fn.dxattrNamesAndValueLengths() {
-					print("\(name): \(length.usFormatted) bytes")
+				for metadata in try fn.dxattrMetadata() {
+					print("\(metadata.name): \(metadata.valueLength.usFormatted) bytes")
 				}
 			}
 		}

@@ -58,7 +58,7 @@ public extension FocusNode {
 		}
 	}
 
-	mutating func dxattrNamesAndValueLengths() throws -> Array<(name: String, length: Int)> {
+	mutating func dxattrMetadata() throws -> Set<DXAttrMetadata> {
 		try self.withSQLWrapper { wrapper in
 			try wrapper.listAttributeNamesWithValueLengths()
 		}
