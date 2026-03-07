@@ -48,4 +48,14 @@ struct ReadonlyTests {
 		try #expect(fn.dxattrs() == ["name:value!"])
 		try #expect(self.file.stringContents() == "original")
 	}
+
+	@Test
+	func reportPermissionDeniedWhenMutatingReadonly() throws {
+		try self.fs.setWritableForTesting(at: self.fs.rootDir, writable: false)
+
+		var fn = FocusNode(node: self.file)
+		#expect(throws: PermissionDenied.self) {
+			try fn.setDXAttr(name: "name", value: "value")
+		}
+	}
 }
