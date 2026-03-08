@@ -18,6 +18,7 @@ public struct FocusNode: ~Copyable {
 				// On UNIX, it's safe to delete the file while the DB is still open
 				// (`sqlWrapper != nil`). Windows platforms may have issues
 				try self.existingSidecarFile?.delete()
+				try self.node.removeExtendedAttribute(named: Self.matchupIDXAttrName)
 			}
 		} catch {
 			fputs("Warning: Failed to delete sidecar file for node '\(self.node.name)': \(error.localizedDescription)\n", stderr)
@@ -86,6 +87,7 @@ public extension FocusNode {
 		try self.withSQLWrapper { wrapper in
 			try wrapper.setAttribute(name: name, value: value.into())
 		}
+		try self.ensureMatchupIDOnFocusNode()
 	}
 
 	mutating func removeDXAttr(name: String) throws {
@@ -99,4 +101,42 @@ public extension FocusNode {
 			try wrapper.clearAllAttributes()
 		}
 	}
+}
+
+private extension FocusNode {
+	enum MatchupIDError: Error {
+		case calledWithoutExistingSidecarFile
+		case invalidUUIDString(String)
+	}
+
+	func ensureMatchupIDOnFocusNode() throws -> UUID {
+		guard try self.existingSidecarFile != nil else {
+			assertionFailure("\(#function) called without existing sidecar file")
+			throw MatchupIDError.calledWithoutExistingSidecarFile
+		}
+
+		if let existingIDString = try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) {
+			if let uuid = UUID(uuidString: existingIDString) {
+				return uuid
+			} else {
+				throw MatchupIDError.invalidUUIDString(existingIDString)
+			}
+		} else {
+			let newID = UUID()
+			try self.node.setExtendedAttribute(named: Self.matchupIDXAttrName, to: newID.uuidString)
+			return newID
+		}
+	}
+}
+
+public extension FocusNode {
+	static let matchupIDXAttrName = "com.lithiumcube.dxattr.matchupID"
+
+	mutating func matchups() throws -> Matchups {
+		Matchups(matchupID: nil)
+	}
+}
+
+public struct Matchups: Equatable, Sendable {
+	public let matchupID: UUID?
 }

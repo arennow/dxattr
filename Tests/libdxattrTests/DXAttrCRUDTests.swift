@@ -1,6 +1,6 @@
 import Dirs
 import Foundation
-@testable import libdxattr
+import libdxattr
 import Testing
 
 struct DXAttrCRUDTests {
