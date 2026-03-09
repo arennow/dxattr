@@ -27,6 +27,7 @@ struct MatchupTests {
 
 		try self.withFN { fn in
 			try #expect(fn.fnMatchups() == .empty)
+			try #expect(fn.dbMatchups() == .empty)
 		}
 
 		try #expect(self.file.extendedAttributeNames() == [])
@@ -38,9 +39,11 @@ struct MatchupTests {
 			try fn.setDXAttr(name: "name", value: "value")
 		}
 
-		let fnMatchups = try self.withFN { fn in
-			try fn.fnMatchups()
+		let (fnMatchups, dbMatchups) = try self.withFN { fn in
+			try (fn.fnMatchups(), fn.dbMatchups())
 		}
+
+		#expect(fnMatchups == dbMatchups)
 
 		try #expect(self.file.extendedAttributeNames() == [FocusNode.matchupIDXAttrName])
 		try #expect(self.file.extendedAttributeString(named: FocusNode.matchupIDXAttrName) == fnMatchups.matchupID?.uuidString)

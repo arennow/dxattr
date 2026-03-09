@@ -87,7 +87,8 @@ public extension FocusNode {
 		try self.withSQLWrapper { [focusNode = self.node] wrapper in
 			try wrapper.setAttribute(name: name, value: value.into())
 
-			_ = try Self.ensureMatchupID(on: focusNode)
+			let matchupID = try Self.ensureMatchupID(on: focusNode)
+			try wrapper.setMatchup(key: .matchupID, value: matchupID.uuidString)
 		}
 	}
 
@@ -127,8 +128,7 @@ private extension FocusNode {
 public extension FocusNode {
 	static let matchupIDXAttrName = "com.lithiumcube.dxattr.matchupID"
 
-	// TODO: Move this decoding behavior into `Matchups`
-	mutating func fnMatchups() throws -> Matchups {
+	func fnMatchups() throws -> Matchups {
 		var outMatchups = Matchups.empty
 
 		if let matchupIDString = try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) {
@@ -136,6 +136,24 @@ public extension FocusNode {
 				outMatchups.matchupID = matchupID
 			} else {
 				throw MatchupIDError.invalidUUIDString(matchupIDString)
+			}
+		}
+
+		return outMatchups
+	}
+
+	mutating func dbMatchups() throws -> Matchups {
+		var outMatchups = Matchups.empty
+
+		try self.withSQLWrapperIfFileExists { wrapper in
+			if let matchupIDData = try wrapper.getMatchup(key: .matchupID),
+			   let matchupIDString = String(data: matchupIDData, encoding: .utf8)
+			{
+				if let matchupID = UUID(uuidString: matchupIDString) {
+					outMatchups.matchupID = matchupID
+				} else {
+					throw MatchupIDError.invalidUUIDString(matchupIDString)
+				}
 			}
 		}
 

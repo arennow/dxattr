@@ -24,6 +24,9 @@ struct SQLWrapper: ~Copyable {
 	private var removeAttributeStmt: SQLitePreparedStatement?
 	private var clearAllAttributesStmt: SQLitePreparedStatement?
 
+	private var getMatchupStmt: SQLitePreparedStatement?
+	private var setMatchupStmt: SQLitePreparedStatement?
+
 	init(file: File) throws {
 		if file.fs is MockFSInterface {
 			try self.init(storage: .serializing(load: {
@@ -90,6 +93,11 @@ private extension SQLWrapper {
 		try self.interface.execute(query: """
 		CREATE TABLE IF NOT EXISTS attrs (
 			name TEXT PRIMARY KEY,
+			value BLOB
+		) WITHOUT ROWID;
+
+		CREATE TABLE IF NOT EXISTS matchups (
+			key TEXT PRIMARY KEY,
 			value BLOB
 		) WITHOUT ROWID;
 		""")
@@ -162,6 +170,32 @@ private extension SQLWrapper {
 																	  statementStr: "DELETE FROM attrs;")
 		}
 		return try body(self.clearAllAttributesStmt!)
+	}
+
+	mutating func withGetMatchupStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
+		try self.prepareTablesIfNeeded()
+
+		if self.getMatchupStmt == nil {
+			self.getMatchupStmt = try SQLitePreparedStatement(db: self.interface.db,
+															  statementStr: "SELECT value FROM matchups WHERE key = ?;")
+		}
+		return try body(self.getMatchupStmt!)
+	}
+
+	mutating func withSetMatchupStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
+		try self.prepareTablesIfNeeded()
+
+		if self.setMatchupStmt == nil {
+			self.setMatchupStmt = try SQLitePreparedStatement(db: self.interface.db,
+															  statementStr: """
+															  INSERT INTO matchups (key, value)
+															  VALUES (?, ?)
+															  ON CONFLICT(key) DO UPDATE SET
+															  value = excluded.value
+															  WHERE matchups.value IS NOT excluded.value;
+															  """)
+		}
+		return try body(self.setMatchupStmt!)
 	}
 }
 
@@ -238,6 +272,34 @@ extension SQLWrapper {
 			try stmt.reset()
 			let res = try stmt.step()
 			assert(res == .done, "Expected step to return .done after executing a DELETE statement, but got \(res)")
+		}
+	}
+}
+
+extension SQLWrapper {
+	enum MatchupKey: String {
+		case matchupID
+	}
+
+	mutating func getMatchup(key: MatchupKey) throws -> Data? {
+		try self.withGetMatchupStmt { stmt in
+			try stmt.reset()
+			try stmt.bindText(key.rawValue, at: 1)
+			if try stmt.step() == .row {
+				return try stmt.columnBlob(at: 0)
+			} else {
+				return nil
+			}
+		}
+	}
+
+	mutating func setMatchup(key: MatchupKey, value: some IntoData) throws {
+		try self.withSetMatchupStmt { stmt in
+			try stmt.reset()
+			try stmt.bindText(key.rawValue, at: 1)
+			try stmt.bindBlob(value, at: 2)
+			let res = try stmt.step()
+			assert(res == .done, "Expected step to return .done after executing an INSERT statement, but got \(res)")
 		}
 	}
 }
