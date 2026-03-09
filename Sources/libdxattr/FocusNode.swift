@@ -26,10 +26,14 @@ public struct FocusNode: ~Copyable {
 	}
 
 	private mutating func withSQLWrapperIfFileExists<R>(_ body: (inout SQLWrapper) throws -> R) throws -> R? {
-		if let sidecarFile = try self.existingSidecarFile {
-			return try self.withSQLWrapper(file: sidecarFile, body)
-		} else {
-			return nil
+		try self.existingSidecarFile.flatMap { sidecarFile in
+			try self.withSQLWrapper(file: sidecarFile, body)
+		}
+	}
+
+	private mutating func withSQLWrapperIfFileExists<R>(_ body: (inout SQLWrapper) throws -> R?) throws -> R? {
+		try self.existingSidecarFile.flatMap { sidecarFile in
+			try self.withSQLWrapper(file: sidecarFile, body)
 		}
 	}
 
@@ -39,7 +43,20 @@ public struct FocusNode: ~Copyable {
 
 	private mutating func withSQLWrapper<R>(file: File, _ body: (inout SQLWrapper) throws -> R) throws -> R {
 		if self.sqlWrapper == nil {
-			self.sqlWrapper = try SQLWrapper(file: file)
+			var newWrapper = try SQLWrapper(file: file)
+
+			switch (try self.fnMatchupsIfAny(), try Self.dbMatchupsIfAny(from: &newWrapper)) {
+				case (let fnMatchups?, let dbMatchups?):
+					if !fnMatchups.matches(other: dbMatchups) {
+						throw MatchupMismatch()
+					}
+				case (nil, nil):
+					break
+				default:
+					throw MatchupMismatch()
+			}
+
+			self.sqlWrapper = consume newWrapper
 		}
 
 		return try body(&self.sqlWrapper!)
@@ -105,17 +122,17 @@ public extension FocusNode {
 	}
 }
 
-private extension FocusNode {
-	enum MatchupIDError: Error {
-		case invalidUUIDString(String)
-	}
+extension FocusNode {
+	struct MatchupMismatch: Error {}
+}
 
+private extension FocusNode {
 	static func ensureMatchupID(on focusNode: any Node) throws -> UUID {
 		if let existingIDString = try focusNode.extendedAttributeString(named: Self.matchupIDXAttrName) {
 			if let uuid = UUID(uuidString: existingIDString) {
 				return uuid
 			} else {
-				throw MatchupIDError.invalidUUIDString(existingIDString)
+				throw Matchups.DecodingError.invalidIDUUIDString(existingIDString)
 			}
 		} else {
 			let newID = UUID()
@@ -128,32 +145,42 @@ private extension FocusNode {
 public extension FocusNode {
 	static let matchupIDXAttrName = "com.lithiumcube.dxattr.matchupID"
 
-	func fnMatchups() throws -> Matchups {
+	func fnMatchupsIfAny() throws -> Matchups? {
 		var outMatchups = Matchups.empty
 
 		if let matchupIDString = try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) {
 			if let matchupID = UUID(uuidString: matchupIDString) {
 				outMatchups.matchupID = matchupID
 			} else {
-				throw MatchupIDError.invalidUUIDString(matchupIDString)
+				throw Matchups.DecodingError.invalidIDUUIDString(matchupIDString)
 			}
 		}
 
-		return outMatchups
+		if outMatchups == .empty {
+			return nil
+		} else {
+			return outMatchups
+		}
 	}
 
-	mutating func dbMatchups() throws -> Matchups {
+	mutating func dbMatchupsIfAny() throws -> Matchups? {
+		try self.withSQLWrapperIfFileExists { wrapper in
+			try Self.dbMatchupsIfAny(from: &wrapper)
+		}
+	}
+
+	private static func dbMatchupsIfAny(from wrapper: inout SQLWrapper) throws -> Matchups? {
+		guard let matchupIDData = try wrapper.getMatchup(key: .matchupID) else {
+			return nil
+		}
+
 		var outMatchups = Matchups.empty
 
-		try self.withSQLWrapperIfFileExists { wrapper in
-			if let matchupIDData = try wrapper.getMatchup(key: .matchupID),
-			   let matchupIDString = String(data: matchupIDData, encoding: .utf8)
-			{
-				if let matchupID = UUID(uuidString: matchupIDString) {
-					outMatchups.matchupID = matchupID
-				} else {
-					throw MatchupIDError.invalidUUIDString(matchupIDString)
-				}
+		if let matchupIDString = String(data: matchupIDData, encoding: .utf8) {
+			if let matchupID = UUID(uuidString: matchupIDString) {
+				outMatchups.matchupID = matchupID
+			} else {
+				throw Matchups.DecodingError.invalidIDUUIDString(matchupIDString)
 			}
 		}
 
@@ -162,9 +189,17 @@ public extension FocusNode {
 }
 
 public struct Matchups: Equatable, Sendable {
-	package static var empty: Matchups {
+	enum DecodingError: Error {
+		case invalidIDUUIDString(String)
+	}
+
+	static var empty: Matchups {
 		Matchups(matchupID: nil)
 	}
 
 	public internal(set) var matchupID: UUID?
+
+	func matches(other: Matchups) -> Bool {
+		self.matchupID != nil && self.matchupID == other.matchupID
+	}
 }

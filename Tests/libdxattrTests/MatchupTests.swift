@@ -1,5 +1,6 @@
 import Dirs
-import libdxattr
+import Foundation
+@testable import libdxattr
 import Testing
 
 struct MatchupTests {
@@ -11,13 +12,14 @@ struct MatchupTests {
 		self.file = try self.fs.createFile(at: "/file")
 	}
 
+	@discardableResult
 	func withFN<R>(_ body: (inout FocusNode) throws -> R) rethrows -> R {
 		var fn = FocusNode(node: self.file)
 		return try body(&fn)
 	}
 
 	@Test
-	func noSidecarNoFNMatchups() throws {
+	func noSidecarNoMatchups() throws {
 		try #expect(self.file.extendedAttributeNames() == [])
 
 		try self.withFN { fn in
@@ -26,26 +28,43 @@ struct MatchupTests {
 		}
 
 		try self.withFN { fn in
-			try #expect(fn.fnMatchups() == .empty)
-			try #expect(fn.dbMatchups() == .empty)
+			try #expect(fn.fnMatchupsIfAny() == nil)
+			try #expect(fn.dbMatchupsIfAny() == nil)
 		}
 
 		try #expect(self.file.extendedAttributeNames() == [])
 	}
 
 	@Test
-	func yesSidecarYesFNMatchups() throws {
+	func yesSidecarYesMatchups() throws {
 		try self.withFN { fn in
 			try fn.setDXAttr(name: "name", value: "value")
 		}
 
 		let (fnMatchups, dbMatchups) = try self.withFN { fn in
-			try (fn.fnMatchups(), fn.dbMatchups())
+			try (fn.fnMatchupsIfAny(), fn.dbMatchupsIfAny())
 		}
 
 		#expect(fnMatchups == dbMatchups)
 
 		try #expect(self.file.extendedAttributeNames() == [FocusNode.matchupIDXAttrName])
-		try #expect(self.file.extendedAttributeString(named: FocusNode.matchupIDXAttrName) == fnMatchups.matchupID?.uuidString)
+		try #expect(self.file.extendedAttributeString(named: FocusNode.matchupIDXAttrName) == fnMatchups?.matchupID?.uuidString)
+	}
+
+	@Test
+	func matchupsDontMatch() throws {
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name", value: "value")
+		}
+
+		try self.file.setExtendedAttribute(named: FocusNode.matchupIDXAttrName, to: UUID().uuidString)
+		self.withFN { fn in
+			#expect(throws: FocusNode.MatchupMismatch.self) { try fn.dxattrs() }
+		}
+
+		try self.file.removeExtendedAttribute(named: FocusNode.matchupIDXAttrName)
+		self.withFN { fn in
+			#expect(throws: FocusNode.MatchupMismatch.self) { try fn.dxattrs() }
+		}
 	}
 }
