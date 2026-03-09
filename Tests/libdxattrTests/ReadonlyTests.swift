@@ -35,10 +35,11 @@ struct ReadonlyTests {
 		try #expect(fn.dxattrs() == ["name:value!"])
 	}
 
+	// We can't mark the file as readonly because we add an xattr
+	// A better solution to this would be to have MockFS keep a log of changes
 	@Test
-	func noMutationsOnFocusNode() throws {
+	func noMutationsOnFocusNodeContent() throws {
 		try self.file.replaceContents("original")
-		try self.fs.setWritableForTesting(at: self.file, writable: false)
 
 		var fn = FocusNode(node: self.file)
 		try fn.setDXAttr(name: "name", value: "value!")
@@ -47,6 +48,7 @@ struct ReadonlyTests {
 		try #expect(fn.dxattrMetadata() == [DXAttrMetadata(name: "name", valueLength: 6)])
 		try #expect(fn.dxattrs() == ["name:value!"])
 		try #expect(self.file.stringContents() == "original")
+		try #expect(self.file.extendedAttributeNames().subtracting([FocusNode.matchupIDXAttrName]) == [])
 	}
 
 	@Test

@@ -11,24 +11,36 @@ struct MatchupTests {
 		self.file = try self.fs.createFile(at: "/file")
 	}
 
+	func withFN<R>(_ body: (inout FocusNode) throws -> R) rethrows -> R {
+		var fn = FocusNode(node: self.file)
+		return try body(&fn)
+	}
+
 	@Test
-	func noSidecarNoMatchup() throws {
+	func noSidecarNoFNMatchups() throws {
 		try #expect(self.file.extendedAttributeNames() == [])
 
-		var fn = FocusNode(node: self.file)
-		try fn.setDXAttr(name: "name", value: "value")
-		try fn.clearDXAttrs()
-		_ = consume fn
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name", value: "value")
+			try fn.clearDXAttrs()
+		}
+
+		try self.withFN { fn in
+			try #expect(fn.fnMatchups() == .empty)
+		}
 
 		try #expect(self.file.extendedAttributeNames() == [])
 	}
 
 	@Test
-	func yesSidecarYesMatchup() throws {
-		var fn = FocusNode(node: self.file)
-		try fn.setDXAttr(name: "name", value: "value")
-		let fnMatchups = try fn.matchups()
-		_ = consume fn
+	func yesSidecarYesFNMatchups() throws {
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name", value: "value")
+		}
+
+		let fnMatchups = try self.withFN { fn in
+			try fn.fnMatchups()
+		}
 
 		try #expect(self.file.extendedAttributeNames() == [FocusNode.matchupIDXAttrName])
 		try #expect(self.file.extendedAttributeString(named: FocusNode.matchupIDXAttrName) == fnMatchups.matchupID?.uuidString)

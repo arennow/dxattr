@@ -84,10 +84,11 @@ public extension FocusNode {
 	}
 
 	mutating func setDXAttr(name: String, value: some IntoData) throws {
-		try self.withSQLWrapper { wrapper in
+		try self.withSQLWrapper { [focusNode = self.node] wrapper in
 			try wrapper.setAttribute(name: name, value: value.into())
+
+			_ = try Self.ensureMatchupID(on: focusNode)
 		}
-		try self.ensureMatchupIDOnFocusNode()
 	}
 
 	mutating func removeDXAttr(name: String) throws {
@@ -105,17 +106,11 @@ public extension FocusNode {
 
 private extension FocusNode {
 	enum MatchupIDError: Error {
-		case calledWithoutExistingSidecarFile
 		case invalidUUIDString(String)
 	}
 
-	func ensureMatchupIDOnFocusNode() throws -> UUID {
-		guard try self.existingSidecarFile != nil else {
-			assertionFailure("\(#function) called without existing sidecar file")
-			throw MatchupIDError.calledWithoutExistingSidecarFile
-		}
-
-		if let existingIDString = try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) {
+	static func ensureMatchupID(on focusNode: any Node) throws -> UUID {
+		if let existingIDString = try focusNode.extendedAttributeString(named: Self.matchupIDXAttrName) {
 			if let uuid = UUID(uuidString: existingIDString) {
 				return uuid
 			} else {
@@ -123,7 +118,7 @@ private extension FocusNode {
 			}
 		} else {
 			let newID = UUID()
-			try self.node.setExtendedAttribute(named: Self.matchupIDXAttrName, to: newID.uuidString)
+			try focusNode.setExtendedAttribute(named: Self.matchupIDXAttrName, to: newID.uuidString)
 			return newID
 		}
 	}
@@ -132,11 +127,26 @@ private extension FocusNode {
 public extension FocusNode {
 	static let matchupIDXAttrName = "com.lithiumcube.dxattr.matchupID"
 
-	mutating func matchups() throws -> Matchups {
-		Matchups(matchupID: nil)
+	// TODO: Move this decoding behavior into `Matchups`
+	mutating func fnMatchups() throws -> Matchups {
+		var outMatchups = Matchups.empty
+
+		if let matchupIDString = try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) {
+			if let matchupID = UUID(uuidString: matchupIDString) {
+				outMatchups.matchupID = matchupID
+			} else {
+				throw MatchupIDError.invalidUUIDString(matchupIDString)
+			}
+		}
+
+		return outMatchups
 	}
 }
 
 public struct Matchups: Equatable, Sendable {
-	public let matchupID: UUID?
+	package static var empty: Matchups {
+		Matchups(matchupID: nil)
+	}
+
+	public internal(set) var matchupID: UUID?
 }
