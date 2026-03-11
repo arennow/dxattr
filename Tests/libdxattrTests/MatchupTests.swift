@@ -71,4 +71,14 @@ struct MatchupTests {
 			}
 		}
 	}
+
+	@Test
+	func fnMatchupIDButNoDB() throws {
+		try self.file.setExtendedAttribute(named: FocusNode.matchupIDXAttrName, to: "any random string")
+		self.withFN { fn in
+			#expect(throws: Matchups.MissingSidecar()) {
+				try fn.dxattrs()
+			}
+		}
+	}
 }

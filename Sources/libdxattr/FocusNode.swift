@@ -26,8 +26,14 @@ public struct FocusNode: ~Copyable {
 	}
 
 	private mutating func withSQLWrapperIfFileExists<R>(_ body: (inout SQLWrapper) throws -> R) throws -> R? {
-		try self.existingSidecarFile.flatMap { sidecarFile in
-			try self.withSQLWrapper(file: sidecarFile, body)
+		if let sidecarFile = try self.existingSidecarFile {
+			return try self.withSQLWrapper(file: sidecarFile, body)
+		} else {
+			if try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) != nil {
+				throw Matchups.MissingSidecar()
+			} else {
+				return nil
+			}
 		}
 	}
 
@@ -191,6 +197,13 @@ public struct Matchups: Equatable, Sendable {
 
 		public var description: String {
 			"Matchup mismatch: \(self.source) \(self.kind): \(self.facet)"
+		}
+	}
+
+	/// Only for when there's a matchup ID in the FocusNode but no sidecar db file
+	public struct MissingSidecar: Error, Equatable, Sendable, CustomStringConvertible {
+		public var description: String {
+			"Missing sidecar file for matchup ID"
 		}
 	}
 
