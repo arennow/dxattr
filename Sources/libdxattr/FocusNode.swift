@@ -38,12 +38,6 @@ public struct FocusNode: ~Copyable {
 		}
 	}
 
-	private mutating func withSQLWrapperIfFileExists<R>(_ body: (inout SQLWrapper) throws -> R?) throws -> R? {
-		try self.existingSidecarFile.flatMap { sidecarFile in
-			try self.withSQLWrapper(file: sidecarFile, body)
-		}
-	}
-
 	private mutating func withSQLWrapper<R>(_ body: (inout SQLWrapper) throws -> R) throws -> R {
 		try self.withSQLWrapper(file: self.sidecarFile, body)
 	}
@@ -166,7 +160,7 @@ public extension FocusNode {
 	mutating func dbMatchupsIfAny() throws -> Matchups? {
 		try self.withSQLWrapperIfFileExists { wrapper in
 			try Self.dbMatchupsIfAny(from: &wrapper)
-		}
+		}.flatMap(\.self)
 	}
 
 	private static func dbMatchupsIfAny(from wrapper: inout SQLWrapper) throws -> Matchups? {
