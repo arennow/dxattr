@@ -52,19 +52,23 @@ struct MatchupTests {
 	}
 
 	@Test
-	func matchupsDontMatch() throws {
+	func nonMatchingMatchups() throws {
 		try self.withFN { fn in
 			try fn.setDXAttr(name: "name", value: "value")
 		}
 
 		try self.file.setExtendedAttribute(named: FocusNode.matchupIDXAttrName, to: UUID().uuidString)
 		self.withFN { fn in
-			#expect(throws: FocusNode.MatchupMismatch.self) { try fn.dxattrs() }
+			#expect(throws: Matchups.Mismatch(source: .both, kind: .valueMismatch, facet: .matchupID)) {
+				try fn.dxattrs()
+			}
 		}
 
 		try self.file.removeExtendedAttribute(named: FocusNode.matchupIDXAttrName)
 		self.withFN { fn in
-			#expect(throws: FocusNode.MatchupMismatch.self) { try fn.dxattrs() }
+			#expect(throws: Matchups.Mismatch(source: .focusNode, kind: .missing, facet: .matchupID)) {
+				try fn.dxattrs()
+			}
 		}
 	}
 }

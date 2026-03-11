@@ -45,16 +45,9 @@ public struct FocusNode: ~Copyable {
 		if self.sqlWrapper == nil {
 			var newWrapper = try SQLWrapper(file: file)
 
-			switch (try self.fnMatchupsIfAny(), try Self.dbMatchupsIfAny(from: &newWrapper)) {
-				case (let fnMatchups?, let dbMatchups?):
-					if !fnMatchups.matches(other: dbMatchups) {
-						throw MatchupMismatch()
-					}
-				case (nil, nil):
-					break
-				default:
-					throw MatchupMismatch()
-			}
+			let (fnMatchups, dbMatchups) = (try self.fnMatchupsIfAny(), try Self.dbMatchupsIfAny(from: &newWrapper))
+
+			try Matchups.checkMatch(fnMatchups, dbMatchups)
 
 			self.sqlWrapper = consume newWrapper
 		}
@@ -124,10 +117,6 @@ public extension FocusNode {
 	}
 }
 
-extension FocusNode {
-	struct MatchupMismatch: Error {}
-}
-
 private extension FocusNode {
 	static func ensureMatchupID(on focusNode: any Node) throws -> UUID {
 		if let existingIDString = try focusNode.extendedAttributeString(named: Self.matchupIDXAttrName) {
@@ -191,6 +180,20 @@ public extension FocusNode {
 }
 
 public struct Matchups: Equatable, Sendable {
+	public struct Mismatch: Error, Equatable, Sendable, CustomStringConvertible {
+		public enum Source: Sendable { case focusNode, database, both }
+		public enum Kind: Sendable { case missing, valueMismatch }
+		public enum Facet: Sendable { case matchupID }
+
+		public let source: Source
+		public let kind: Kind
+		public let facet: Facet
+
+		public var description: String {
+			"Matchup mismatch: \(self.source) \(self.kind): \(self.facet)"
+		}
+	}
+
 	enum DecodingError: Error {
 		case invalidIDUUIDString(String)
 	}
@@ -201,7 +204,22 @@ public struct Matchups: Equatable, Sendable {
 
 	public internal(set) var matchupID: UUID?
 
-	func matches(other: Matchups) -> Bool {
-		self.matchupID != nil && self.matchupID == other.matchupID
+	static func checkMatch(_ fnMatchup: Matchups?, _ dbMatchup: Matchups?) throws {
+		if fnMatchup == nil, dbMatchup == nil {
+			// If they're both nil, it's a match (no dxattrs have been set up yet)
+			return
+		}
+
+		guard let fnID = fnMatchup?.matchupID else {
+			throw Mismatch(source: .focusNode, kind: .missing, facet: .matchupID)
+		}
+
+		guard let dbID = dbMatchup?.matchupID else {
+			throw Mismatch(source: .database, kind: .missing, facet: .matchupID)
+		}
+
+		guard fnID == dbID else {
+			throw Mismatch(source: .both, kind: .valueMismatch, facet: .matchupID)
+		}
 	}
 }
