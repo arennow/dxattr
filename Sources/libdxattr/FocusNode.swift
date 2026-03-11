@@ -3,6 +3,7 @@ import Foundation
 
 public struct FocusNode: ~Copyable {
 	public let node: any Node
+	public var ignoreMismatches = false
 	private var sqlWrapper: SQLWrapper?
 
 	public init(node: any Node) {
@@ -29,7 +30,7 @@ public struct FocusNode: ~Copyable {
 		if let sidecarFile = try self.existingSidecarFile {
 			return try self.withSQLWrapper(file: sidecarFile, body)
 		} else {
-			if try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) != nil {
+			if !self.ignoreMismatches, try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) != nil {
 				throw Matchups.MissingSidecar()
 			} else {
 				return nil
@@ -53,7 +54,9 @@ public struct FocusNode: ~Copyable {
 
 			let (fnMatchups, dbMatchups) = (try self.fnMatchupsIfAny(), try Self.dbMatchupsIfAny(from: &newWrapper))
 
-			try Matchups.checkMatch(fnMatchups, dbMatchups)
+			if !self.ignoreMismatches {
+				try Matchups.checkMatch(fnMatchups, dbMatchups)
+			}
 
 			self.sqlWrapper = consume newWrapper
 		}

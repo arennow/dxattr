@@ -30,11 +30,15 @@ extension DXAttrCommand {
 		@Flag(name: .customShort("v"), help: "Also show each attribute's value.")
 		var verbose = false
 
+		@Flag(name: .customShort("i"), help: "Ignore mismatches between focus node and sidecar file.")
+		var ignoreMismatches = false
+
 		@Argument(help: "The file or directory to inspect.")
 		var file: String
 
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
+			fn.ignoreMismatches = self.ignoreMismatches
 
 			if self.verbose {
 				let attrs = try fn.dxattrs()
@@ -55,6 +59,9 @@ extension DXAttrCommand {
 		@Flag(name: .customShort("v"), help: "Print in 'name: value' format.")
 		var verbose = false
 
+		@Flag(name: .customShort("i"), help: "Ignore mismatches between focus node and sidecar file.")
+		var ignoreMismatches = false
+
 		@Argument(help: "The file or directory to inspect.")
 		var file: String
 
@@ -63,6 +70,7 @@ extension DXAttrCommand {
 
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
+			fn.ignoreMismatches = self.ignoreMismatches
 			let attrs = try fn.dxattrs()
 			guard let attr = attrs.first(where: { $0.name == name }) else {
 				throw ValidationError("No such dxattr: \(self.name)")

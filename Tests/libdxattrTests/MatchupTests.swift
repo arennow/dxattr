@@ -6,6 +6,9 @@ import Testing
 struct MatchupTests {
 	let fs: MockFSInterface
 	let file: File
+	var sidecarFile: File? {
+		try? self.fs.rootDir.file(at: "/._file.dxattrs")
+	}
 
 	init() throws {
 		self.fs = MockFSInterface()
@@ -79,6 +82,37 @@ struct MatchupTests {
 			#expect(throws: Matchups.MissingSidecar()) {
 				try fn.dxattrs()
 			}
+		}
+	}
+
+	@Test
+	func overrideNonMatchingMatchupsForReads() throws {
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name", value: "value")
+		}
+
+		try self.file.setExtendedAttribute(named: FocusNode.matchupIDXAttrName, to: UUID().uuidString)
+		try self.withFN { fn in
+			#expect(throws: Matchups.Mismatch(source: .both, kind: .valueMismatch, facet: .matchupID)) {
+				try fn.dxattrs()
+			}
+
+			fn.ignoreMismatches = true
+			try #expect(fn.dxattrNames() == ["name"])
+			try #expect(fn.dxattrMetadata() == [.init(name: "name", valueLength: 5)])
+			try #expect(fn.dxattrs() == ["name:value"])
+		}
+
+		try self.sidecarFile?.delete()
+		try self.withFN { fn in
+			#expect(throws: Matchups.MissingSidecar()) {
+				try fn.dxattrs()
+			}
+
+			fn.ignoreMismatches = true
+			try #expect(fn.dxattrNames() == [])
+			try #expect(fn.dxattrMetadata() == [])
+			try #expect(fn.dxattrs() == [])
 		}
 	}
 }
