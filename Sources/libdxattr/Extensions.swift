@@ -8,3 +8,13 @@ extension String {
 		}
 	}
 }
+
+extension Sequence {
+	func setMap<T: Hashable>(_ transform: (Element) throws -> T) rethrows -> Set<T> {
+		var out = Set<T>()
+		for element in self {
+			try out.insert(transform(element))
+		}
+		return out
+	}
+}

@@ -21,6 +21,7 @@ struct SQLWrapper: ~Copyable {
 	private var setAttributeStmt: SQLitePreparedStatement?
 	private var listNamesStmt: SQLitePreparedStatement?
 	private var listNamesWithValueLengthsStmt: SQLitePreparedStatement?
+	private var listNamesWithValuesStmt: SQLitePreparedStatement?
 	private var removeAttributeStmt: SQLitePreparedStatement?
 	private var clearAllAttributesStmt: SQLitePreparedStatement?
 
@@ -152,6 +153,16 @@ private extension SQLWrapper {
 		return try body(self.listNamesWithValueLengthsStmt!)
 	}
 
+	mutating func withListNamesWithValuesStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
+		try self.prepareTablesIfNeeded()
+
+		if self.listNamesWithValuesStmt == nil {
+			self.listNamesWithValuesStmt = try SQLitePreparedStatement(db: self.interface.db,
+																	   statementStr: "SELECT name, value FROM attrs;")
+		}
+		return try body(self.listNamesWithValuesStmt!)
+	}
+
 	mutating func withRemoveAttributeStmt<T>(_ body: (borrowing SQLitePreparedStatement) throws -> T) throws -> T {
 		try self.prepareTablesIfNeeded()
 
@@ -245,17 +256,15 @@ extension SQLWrapper {
 		}
 	}
 
-	mutating func getAllAttributes() throws -> Set<DXAttr> {
-		var out = Set<DXAttr>()
-
-		for name in try self.listAttributeNames() {
-			guard let value = try self.getAttribute(name: name) else {
-				continue
+	mutating func listAttributeNamesWithValues() throws -> [String: Data] {
+		try self.withListNamesWithValuesStmt { stmt in
+			try stmt.reset()
+			var out = [String: Data]()
+			while try stmt.step() == .row {
+				out[try stmt.columnText(at: 0)] = try stmt.columnBlob(at: 1)
 			}
-			out.insert(DXAttr(name: name, value: value))
+			return out
 		}
-
-		return out
 	}
 
 	mutating func removeAttribute(name: String) throws {

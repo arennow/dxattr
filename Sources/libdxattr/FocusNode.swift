@@ -96,7 +96,9 @@ public extension FocusNode {
 
 	mutating func dxattrs() throws -> Set<DXAttr> {
 		try self.withSQLWrapperIfFileExists { wrapper in
-			try wrapper.getAllAttributes()
+			try wrapper.listAttributeNamesWithValues().setMap { name, value in
+				DXAttr(name: name, value: value)
+			}
 		} ?? []
 	}
 

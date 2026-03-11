@@ -41,7 +41,10 @@ struct SQLWrapperInMemoryTests: ~Copyable {
 		try self.wrapper.setAttribute(name: "name1", value: "value1")
 		try self.wrapper.setAttribute(name: "name2", value: "value2")
 
-		try #expect(self.wrapper.getAllAttributes() == ["name1:value1", "name2:value2"])
+		try #expect(self.wrapper.listAttributeNamesWithValues() == [
+			"name1": Data("value1".utf8),
+			"name2": Data("value2".utf8),
+		])
 	}
 }
 
