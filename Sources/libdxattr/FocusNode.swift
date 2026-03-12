@@ -191,7 +191,7 @@ public struct Matchups: Equatable, Sendable {
 		public let facet: Facet
 
 		public var description: String {
-			"Matchup mismatch: \(self.source) \(self.kind): \(self.facet)"
+			"Matchup mismatch: \(self.source) \(self.kind) \(self.facet)"
 		}
 	}
 

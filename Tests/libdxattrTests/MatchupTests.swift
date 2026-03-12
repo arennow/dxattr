@@ -115,4 +115,34 @@ struct MatchupTests {
 			try #expect(fn.dxattrs() == [])
 		}
 	}
+
+	@Test
+	func overrideNonMatchingMatchupsForWrites() throws {
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name1", value: "value1")
+		}
+
+		try self.file.setExtendedAttribute(named: FocusNode.matchupIDXAttrName, to: UUID().uuidString)
+		try self.withFN { fn in
+			#expect(throws: Matchups.Mismatch(source: .both, kind: .valueMismatch, facet: .matchupID)) {
+				try fn.setDXAttr(name: "name2", value: "value2")
+			}
+
+			fn.ignoreMismatches = true
+			try fn.setDXAttr(name: "name3", value: "value3")
+			try #expect(fn.dxattrs() == ["name1:value1", "name3:value3"])
+		}
+
+		try self.sidecarFile?.delete()
+		try self.withFN { fn in
+			#expect(throws: Matchups.MissingSidecar()) {
+				try fn.setDXAttr(name: "name4", value: "value4")
+			}
+
+			fn.ignoreMismatches = true
+			try fn.setDXAttr(name: "name5", value: "value5")
+
+			try #expect(fn.dxattrs() == ["name5:value5"])
+		}
+	}
 }
