@@ -26,25 +26,23 @@ public struct FocusNode: ~Copyable {
 		}
 	}
 
-	private mutating func withSQLWrapperIfFileExists<R>(_ body: (inout SQLWrapper) throws -> R) throws -> R? {
-		if let sidecarFile = try self.existingSidecarFile {
-			return try self.withSQLWrapper(file: sidecarFile, body)
-		} else {
-			if !self.ignoreMismatches, try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) != nil {
+	private mutating func withSQLWrapper<R>(createIfNeeded: Bool, _ body: (inout SQLWrapper) throws -> R) throws -> R? {
+		if self.sqlWrapper == nil {
+			let resolvedFile: File
+
+			if let existingSidecarFile = try self.existingSidecarFile {
+				resolvedFile = existingSidecarFile
+			} else if !self.ignoreMismatches, try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) != nil {
 				throw Matchups.MissingSidecar()
 			} else {
-				return nil
+				if createIfNeeded {
+					resolvedFile = try self.sidecarFile
+				} else {
+					return nil
+				}
 			}
-		}
-	}
 
-	private mutating func withSQLWrapper<R>(_ body: (inout SQLWrapper) throws -> R) throws -> R {
-		try self.withSQLWrapper(file: self.sidecarFile, body)
-	}
-
-	private mutating func withSQLWrapper<R>(file: File, _ body: (inout SQLWrapper) throws -> R) throws -> R {
-		if self.sqlWrapper == nil {
-			var newWrapper = try SQLWrapper(file: file)
+			var newWrapper = try SQLWrapper(file: resolvedFile)
 
 			let (fnMatchups, dbMatchups) = (try self.fnMatchupsIfAny(), try Self.dbMatchupsIfAny(from: &newWrapper))
 
@@ -79,19 +77,19 @@ private extension FocusNode {
 
 public extension FocusNode {
 	mutating func dxattrNames() throws -> Set<String> {
-		try self.withSQLWrapperIfFileExists { wrapper in
+		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
 			try wrapper.listAttributeNames()
 		} ?? []
 	}
 
 	mutating func dxattrMetadata() throws -> Set<DXAttrMetadata> {
-		try self.withSQLWrapperIfFileExists { wrapper in
+		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
 			try wrapper.listAttributeNamesWithValueLengths()
 		} ?? []
 	}
 
 	mutating func dxattrs() throws -> Set<DXAttr> {
-		try self.withSQLWrapperIfFileExists { wrapper in
+		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
 			try wrapper.listAttributeNamesWithValues().setMap { name, value in
 				DXAttr(name: name, value: value)
 			}
@@ -99,7 +97,7 @@ public extension FocusNode {
 	}
 
 	mutating func setDXAttr(name: String, value: some IntoData) throws {
-		try self.withSQLWrapper { [focusNode = self.node] wrapper in
+		try self.withSQLWrapper(createIfNeeded: true) { [focusNode = self.node] wrapper in
 			try wrapper.setAttribute(name: name, value: value.into())
 
 			let matchupID = try Self.ensureMatchupID(on: focusNode)
@@ -108,13 +106,13 @@ public extension FocusNode {
 	}
 
 	mutating func removeDXAttr(name: String) throws {
-		try self.withSQLWrapper { wrapper in
+		try self.withSQLWrapper(createIfNeeded: true) { wrapper in
 			try wrapper.removeAttribute(name: name)
 		}
 	}
 
 	mutating func clearDXAttrs() throws {
-		try self.withSQLWrapper { wrapper in
+		try self.withSQLWrapper(createIfNeeded: true) { wrapper in
 			try wrapper.clearAllAttributes()
 		}
 	}
@@ -158,7 +156,7 @@ public extension FocusNode {
 	}
 
 	mutating func dbMatchupsIfAny() throws -> Matchups? {
-		try self.withSQLWrapperIfFileExists { wrapper in
+		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
 			try Self.dbMatchupsIfAny(from: &wrapper)
 		}.flatMap(\.self)
 	}
