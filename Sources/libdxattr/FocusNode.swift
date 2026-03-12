@@ -106,13 +106,13 @@ public extension FocusNode {
 	}
 
 	mutating func removeDXAttr(name: String) throws {
-		try self.withSQLWrapper(createIfNeeded: true) { wrapper in
+		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
 			try wrapper.removeAttribute(name: name)
 		}
 	}
 
 	mutating func clearDXAttrs() throws {
-		try self.withSQLWrapper(createIfNeeded: true) { wrapper in
+		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
 			try wrapper.clearAllAttributes()
 		}
 	}
