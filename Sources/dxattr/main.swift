@@ -27,11 +27,11 @@ extension DXAttrCommand {
 	struct List: ParsableCommand {
 		static let configuration = CommandConfiguration(abstract: "List dxattr names on a file (default).")
 
+		@Flag(name: [.customShort("i"), .long], help: "Ignore mismatches between focus node and sidecar file.")
+		var ignoreMismatches = false
+
 		@Flag(name: .customShort("v"), help: "Also show each attribute's value.")
 		var verbose = false
-
-		@Flag(name: .customShort("i"), help: "Ignore mismatches between focus node and sidecar file.")
-		var ignoreMismatches = false
 
 		@Argument(help: "The file or directory to inspect.")
 		var file: String
@@ -56,11 +56,11 @@ extension DXAttrCommand {
 	struct Print: ParsableCommand {
 		static let configuration = CommandConfiguration(abstract: "Print the value of a named dxattr.")
 
+		@Flag(name: [.customShort("i"), .long], help: "Ignore mismatches between focus node and sidecar file.")
+		var ignoreMismatches = false
+
 		@Flag(name: .customShort("v"), help: "Print in 'name: value' format.")
 		var verbose = false
-
-		@Flag(name: .customShort("i"), help: "Ignore mismatches between focus node and sidecar file.")
-		var ignoreMismatches = false
 
 		@Argument(help: "The file or directory to inspect.")
 		var file: String
@@ -87,6 +87,9 @@ extension DXAttrCommand {
 	struct Write: ParsableCommand {
 		static let configuration = CommandConfiguration(abstract: "Write (upsert) a dxattr on a file.")
 
+		@Flag(name: [.customShort("i"), .long], help: "Ignore mismatches between focus node and sidecar file.")
+		var ignoreMismatches = false
+
 		@Flag(name: [.customShort("s"), .long], help: "Read value from stdin.")
 		var stdin: Bool = false
 
@@ -110,6 +113,7 @@ extension DXAttrCommand {
 
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
+			fn.ignoreMismatches = self.ignoreMismatches
 			if let value {
 				try fn.setDXAttr(name: self.name, value: value)
 			} else {
@@ -122,6 +126,9 @@ extension DXAttrCommand {
 	struct Delete: ParsableCommand {
 		static let configuration = CommandConfiguration(abstract: "Delete a named dxattr from a file.")
 
+		@Flag(name: [.customShort("i"), .long], help: "Ignore mismatches between focus node and sidecar file.")
+		var ignoreMismatches = false
+
 		@Argument(help: "The file or directory to modify.")
 		var file: String
 
@@ -130,6 +137,7 @@ extension DXAttrCommand {
 
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
+			fn.ignoreMismatches = self.ignoreMismatches
 			try fn.removeDXAttr(name: self.name)
 		}
 	}
@@ -137,11 +145,15 @@ extension DXAttrCommand {
 	struct Clear: ParsableCommand {
 		static let configuration = CommandConfiguration(abstract: "Remove all dxattrs from a file.")
 
+		@Flag(name: [.customShort("i"), .long], help: "Ignore mismatches between focus node and sidecar file.")
+		var ignoreMismatches = false
+
 		@Argument(help: "The file or directory to clear.")
 		var file: String
 
 		func run() throws {
 			var fn = try makeFocusNode(path: file)
+			fn.ignoreMismatches = self.ignoreMismatches
 			try fn.clearDXAttrs()
 		}
 	}

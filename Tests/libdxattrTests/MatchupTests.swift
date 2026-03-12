@@ -122,7 +122,9 @@ struct MatchupTests {
 			try fn.setDXAttr(name: "name1", value: "value1")
 		}
 
-		try self.file.setExtendedAttribute(named: FocusNode.matchupIDXAttrName, to: UUID().uuidString)
+		let newUUID = UUID()
+
+		try self.file.setExtendedAttribute(named: FocusNode.matchupIDXAttrName, to: newUUID.uuidString)
 		try self.withFN { fn in
 			#expect(throws: Matchups.Mismatch(source: .both, kind: .valueMismatch, facet: .matchupID)) {
 				try fn.setDXAttr(name: "name2", value: "value2")
@@ -131,6 +133,7 @@ struct MatchupTests {
 			fn.ignoreMismatches = true
 			try fn.setDXAttr(name: "name3", value: "value3")
 			try #expect(fn.dxattrs() == ["name1:value1", "name3:value3"])
+			try #expect(fn.dbMatchupsIfAny()?.matchupID == newUUID)
 		}
 
 		try self.sidecarFile?.delete()
@@ -143,6 +146,7 @@ struct MatchupTests {
 			try fn.setDXAttr(name: "name5", value: "value5")
 
 			try #expect(fn.dxattrs() == ["name5:value5"])
+			try #expect(fn.dbMatchupsIfAny()?.matchupID == newUUID)
 		}
 	}
 }
