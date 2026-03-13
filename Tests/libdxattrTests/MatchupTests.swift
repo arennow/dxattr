@@ -6,7 +6,7 @@ import Testing
 struct MatchupTests {
 	let fs: MockFSInterface
 	let file: File
-	var sidecarFile: File? {
+	var existingSidecarFile: File? {
 		try? self.fs.rootDir.file(at: "/._file.dxattrs")
 	}
 
@@ -103,7 +103,7 @@ struct MatchupTests {
 			try #expect(fn.dxattrs() == ["name:value"])
 		}
 
-		try self.sidecarFile?.delete()
+		try self.existingSidecarFile?.delete()
 		try self.withFN { fn in
 			#expect(throws: Matchups.MissingSidecar()) {
 				try fn.dxattrs()
@@ -136,7 +136,7 @@ struct MatchupTests {
 			try #expect(fn.dbMatchupsIfAny()?.matchupID == newUUID)
 		}
 
-		try self.sidecarFile?.delete()
+		try self.existingSidecarFile?.delete()
 		try self.withFN { fn in
 			#expect(throws: Matchups.MissingSidecar()) {
 				try fn.setDXAttr(name: "name4", value: "value4")
@@ -148,5 +148,45 @@ struct MatchupTests {
 			try #expect(fn.dxattrs() == ["name5:value5"])
 			try #expect(fn.dbMatchupsIfAny()?.matchupID == newUUID)
 		}
+	}
+
+	@Test
+	func overrideNonMatchingMatchupsForRemoves() throws {
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "name1", value: "value1")
+			try fn.setDXAttr(name: "name2", value: "value2")
+		}
+
+		let newUUID = UUID()
+
+		try self.file.setExtendedAttribute(named: FocusNode.matchupIDXAttrName, to: newUUID.uuidString)
+		try self.withFN { fn in
+			#expect(throws: Matchups.Mismatch(source: .both, kind: .valueMismatch, facet: .matchupID)) {
+				try fn.removeDXAttr(name: "name1")
+			}
+
+			fn.ignoreMismatches = true
+			try fn.removeDXAttr(name: "name1")
+			try #expect(fn.dxattrs() == ["name2:value2"])
+			try #expect(fn.fnMatchupsIfAny()?.matchupID == newUUID)
+			try #expect(fn.dbMatchupsIfAny()?.matchupID == newUUID)
+		}
+
+		try self.existingSidecarFile?.delete()
+		try self.withFN { fn in
+			#expect(throws: Matchups.MissingSidecar()) {
+				try fn.removeDXAttr(name: "name2")
+			}
+
+			fn.ignoreMismatches = true
+			try fn.removeDXAttr(name: "name2")
+
+			try #expect(fn.dxattrs() == [])
+		}
+
+		try self.withFN { fn in
+			try #expect(fn.fnMatchupsIfAny()?.matchupID == nil)
+		}
+		#expect(self.existingSidecarFile == nil)
 	}
 }

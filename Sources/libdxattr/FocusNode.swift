@@ -5,6 +5,7 @@ public struct FocusNode: ~Copyable {
 	public let node: any Node
 	public var ignoreMismatches = false
 	private var sqlWrapper: SQLWrapper?
+	private var shouldClearFNMatchupsOnDeinit = false
 
 	public init(node: any Node) {
 		self.node = node
@@ -20,22 +21,38 @@ public struct FocusNode: ~Copyable {
 				// (`sqlWrapper != nil`). Windows platforms may have issues
 				try self.existingSidecarFile?.delete()
 				try self.node.removeExtendedAttribute(named: Self.matchupIDXAttrName)
+			} else if self.shouldClearFNMatchupsOnDeinit {
+				try self.node.removeExtendedAttribute(named: Self.matchupIDXAttrName)
 			}
 		} catch {
 			fputs("Warning: Failed to delete sidecar file for node '\(self.node.name)': \(error.localizedDescription)\n", stderr)
 		}
 	}
 
-	private mutating func withSQLWrapper<R>(createIfNeeded: Bool, _ body: (inout SQLWrapper) throws -> R) throws -> R? {
+	private struct WrapperAccessOptions: OptionSet {
+		let rawValue: Int
+
+		static let createIfNeeded = Self(rawValue: 1 << 0)
+		static let updateMatchupsIfNeeded = Self(rawValue: 1 << 1)
+		static let ignoreMatchupMismatches = Self(rawValue: 1 << 2)
+	}
+
+	private mutating func withSQLWrapper<R>(accessOptions: WrapperAccessOptions, _ body: (inout SQLWrapper) throws -> R) throws -> R? {
 		if self.sqlWrapper == nil {
+			var accessOptions = accessOptions
+			if self.ignoreMismatches {
+				accessOptions.insert(.ignoreMatchupMismatches)
+			}
+
 			let resolvedFile: File
 
 			if let existingSidecarFile = try self.existingSidecarFile {
 				resolvedFile = existingSidecarFile
-			} else if !self.ignoreMismatches, try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) != nil {
+			} else if !accessOptions.contains(.ignoreMatchupMismatches), try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) != nil {
+				self.shouldClearFNMatchupsOnDeinit = true
 				throw Matchups.MissingSidecar()
 			} else {
-				if createIfNeeded {
+				if accessOptions.contains(.createIfNeeded) {
 					resolvedFile = try self.sidecarFile
 				} else {
 					return nil
@@ -44,10 +61,15 @@ public struct FocusNode: ~Copyable {
 
 			var newWrapper = try SQLWrapper(file: resolvedFile)
 
-			let (fnMatchups, dbMatchups) = (try self.fnMatchupsIfAny(), try Self.dbMatchupsIfAny(from: &newWrapper))
-
-			if !self.ignoreMismatches {
+			if !accessOptions.contains(.ignoreMatchupMismatches) {
+				let fnMatchups = try self.fnMatchupsIfAny()
+				let dbMatchups = try Self.dbMatchupsIfAny(from: &newWrapper)
 				try Matchups.checkMatch(fnMatchups, dbMatchups)
+			}
+
+			if accessOptions.contains(.updateMatchupsIfNeeded) {
+				let matchupID = try Self.ensureMatchupID(on: self.node)
+				try newWrapper.setMatchup(key: .matchupID, value: matchupID.uuidString)
 			}
 
 			self.sqlWrapper = consume newWrapper
@@ -77,19 +99,19 @@ private extension FocusNode {
 
 public extension FocusNode {
 	mutating func dxattrNames() throws -> Set<String> {
-		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
+		try self.withSQLWrapper(accessOptions: []) { wrapper in
 			try wrapper.listAttributeNames()
 		} ?? []
 	}
 
 	mutating func dxattrMetadata() throws -> Set<DXAttrMetadata> {
-		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
+		try self.withSQLWrapper(accessOptions: []) { wrapper in
 			try wrapper.listAttributeNamesWithValueLengths()
 		} ?? []
 	}
 
 	mutating func dxattrs() throws -> Set<DXAttr> {
-		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
+		try self.withSQLWrapper(accessOptions: []) { wrapper in
 			try wrapper.listAttributeNamesWithValues().setMap { name, value in
 				DXAttr(name: name, value: value)
 			}
@@ -97,22 +119,19 @@ public extension FocusNode {
 	}
 
 	mutating func setDXAttr(name: String, value: some IntoData) throws {
-		try self.withSQLWrapper(createIfNeeded: true) { [focusNode = self.node] wrapper in
+		try self.withSQLWrapper(accessOptions: [.createIfNeeded, .updateMatchupsIfNeeded]) { wrapper in
 			try wrapper.setAttribute(name: name, value: value.into())
-
-			let matchupID = try Self.ensureMatchupID(on: focusNode)
-			try wrapper.setMatchup(key: .matchupID, value: matchupID.uuidString)
 		}
 	}
 
 	mutating func removeDXAttr(name: String) throws {
-		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
+		try self.withSQLWrapper(accessOptions: [.updateMatchupsIfNeeded]) { wrapper in
 			try wrapper.removeAttribute(name: name)
 		}
 	}
 
 	mutating func clearDXAttrs() throws {
-		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
+		try self.withSQLWrapper(accessOptions: [.updateMatchupsIfNeeded]) { wrapper in
 			try wrapper.clearAllAttributes()
 		}
 	}
@@ -156,7 +175,7 @@ public extension FocusNode {
 	}
 
 	mutating func dbMatchupsIfAny() throws -> Matchups? {
-		try self.withSQLWrapper(createIfNeeded: false) { wrapper in
+		try self.withSQLWrapper(accessOptions: [.ignoreMatchupMismatches]) { wrapper in
 			try Self.dbMatchupsIfAny(from: &wrapper)
 		}.flatMap(\.self)
 	}
