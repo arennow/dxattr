@@ -100,4 +100,17 @@ final class SQLWrapperSerializingTests {
 		_ = consume wrapper
 		#expect(self.persistence != nil)
 	}
+
+	@Test
+	func reducesSizeOnDeletion() throws {
+		var wrapper = try self.createWrapper()
+		try wrapper.setAttribute(name: "name", value: String(repeating: "x", count: 1024 * 1024))
+		_ = consume wrapper
+		let sizeAfterAdding = self.persistence?.count ?? 0
+		wrapper = try self.createWrapper()
+		try wrapper.removeAttribute(name: "name")
+		_ = consume wrapper
+		let sizeAfterDeleting = self.persistence?.count ?? 0
+		#expect(sizeAfterDeleting < sizeAfterAdding)
+	}
 }

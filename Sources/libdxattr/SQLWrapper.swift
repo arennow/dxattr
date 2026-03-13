@@ -47,7 +47,10 @@ struct SQLWrapper: ~Copyable {
 			case .inMemory, .serializing: db = try SQLiteInterface(path: ":memory:")
 		}
 
-		try db.execute(query: "PRAGMA journal_mode = DELETE;")
+		try db.execute(query: """
+		PRAGMA journal_mode=DELETE;
+		PRAGMA auto_vacuum=FULL;
+		""")
 
 		if case .serializing(let load, let store) = storage {
 			if let data = try load() {
