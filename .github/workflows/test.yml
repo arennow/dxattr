@@ -1,0 +1,39 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install swiftly (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+          tar zxf swiftly-$(uname -m).tar.gz
+          ./swiftly init --quiet-shell-followup
+          echo "$HOME/.local/share/swiftly/bin" >> $GITHUB_PATH
+
+      - name: Install swiftly (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          curl -O https://download.swift.org/swiftly/darwin/swiftly.pkg
+          installer -pkg swiftly.pkg -target CurrentUserHomeDirectory
+          ~/.swiftly/bin/swiftly init --quiet-shell-followup
+          echo "$HOME/.swiftly/bin" >> $GITHUB_PATH
+
+      - name: Install Swift toolchain
+        run: swiftly install --use $(cat .swift-version)
+
+      - name: Run tests
+        run: swift test
