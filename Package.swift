@@ -13,7 +13,7 @@ let package = Package(name: "dxattr",
 									  targets: ["dxattr"]),
 					  ],
 					  dependencies: [
-					  	.package(url: "https://github.com/arennow/Dirs", branch: "main"),
+					  	.package(url: "https://github.com/arennow/Dirs", from: "0.15.0"),
 					  	.package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
 					  ],
 					  targets: [

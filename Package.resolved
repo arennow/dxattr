@@ -1,13 +1,13 @@
 {
-  "originHash" : "baaea37f0cbabeeabfed503e3924954acb1e8ef544fdf67b0f83c7dc130a4a03",
+  "originHash" : "d65340d4cc672aa1891cff0e4d21ceb10b39a81b7d821e000c69741d935c094a",
   "pins" : [
     {
       "identity" : "dirs",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/arennow/Dirs",
       "state" : {
-        "branch" : "main",
-        "revision" : "cf5f1d36c370d5bb88978f8146c1a690996664c6"
+        "revision" : "ef14d1f5013271d20dec353946525ea2b76e6e5f",
+        "version" : "0.15.0"
       }
     },
     {
