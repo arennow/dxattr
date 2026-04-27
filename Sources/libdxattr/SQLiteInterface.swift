@@ -11,7 +11,12 @@ public struct SQLiteInterface: ~Copyable {
 	}
 
 	deinit {
-		sqlite3_close(db)
+		// Use sqlite3_close_v2 rather than sqlite3_close so that if any prepared
+		// statements (held by SQLWrapper) happen to be deinitialized after this
+		// connection (destruction order of ~Copyable struct properties is
+		// unspecified), the connection becomes a "zombie" and is properly closed
+		// once the last associated resource is released, preventing FD leaks.
+		sqlite3_close_v2(db)
 	}
 
 	public func execute(query: String) throws {
