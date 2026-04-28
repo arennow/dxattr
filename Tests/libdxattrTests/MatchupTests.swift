@@ -189,4 +189,65 @@ struct MatchupTests {
 		}
 		#expect(self.existingSidecarFile == nil)
 	}
+
+	/// Verifies that a matchup ID stored only under the SMB xattr name is found when
+	/// reading, that writes succeed without promoting to the canonical name, and that
+	/// creating a brand-new matchup ID only ever uses the canonical name.
+	@Test
+	func smbXAttrNameFallbackRead() throws {
+		// Set up: write a dxattr so a sidecar exists with a known matchupID
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "key", value: "val")
+		}
+
+		// Move the matchup ID to the SMB name only
+		let originalUUID = try self.withFN { fn in try fn.fnMatchupsIfAny()?.matchupID }
+		try self.file.removeExtendedAttribute(named: FocusNode.matchupIDXAttrName)
+		try self.file.setExtendedAttribute(named: FocusNode.smbMatchupIDXAttrName, to: try #require(originalUUID?.uuidString))
+
+		// Reading via the SMB name should work and return the correct matchupID
+		try self.withFN { fn in
+			try #expect(fn.fnMatchupsIfAny()?.matchupID == originalUUID)
+			try #expect(fn.dxattrs() == ["key:val"])
+		}
+	}
+
+	@Test
+	func smbXAttrNameFallbackWrite() throws {
+		// Set up: write a dxattr so a sidecar exists with a known matchupID
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "key", value: "val")
+		}
+
+		// Move the matchup ID to the SMB name only
+		let originalUUID = try self.withFN { fn in try fn.fnMatchupsIfAny()?.matchupID }
+		try self.file.removeExtendedAttribute(named: FocusNode.matchupIDXAttrName)
+		try self.file.setExtendedAttribute(named: FocusNode.smbMatchupIDXAttrName, to: try #require(originalUUID?.uuidString))
+
+		// Writing with SMB-only matchup ID should succeed
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "key2", value: "val2")
+		}
+
+		// The SMB xattr is left unchanged and the canonical name is NOT written
+		try #expect(self.file.extendedAttributeString(named: FocusNode.smbMatchupIDXAttrName) == originalUUID!.uuidString)
+		try #expect(self.file.extendedAttributeString(named: FocusNode.matchupIDXAttrName) == nil)
+
+		// The written dxattr is readable
+		try self.withFN { fn in
+			try #expect(fn.dxattrs() == ["key:val", "key2:val2"])
+		}
+	}
+
+	@Test
+	func newMatchupIDUsesCanonicalNameOnly() throws {
+		// Create a fresh file with no xattrs and write a dxattr
+		try self.withFN { fn in
+			try fn.setDXAttr(name: "key", value: "val")
+		}
+
+		// Only the canonical xattr name should be present; the SMB name must not be written
+		try #expect(self.file.extendedAttributeNames() == [FocusNode.matchupIDXAttrName])
+		try #expect(self.file.extendedAttributeString(named: FocusNode.smbMatchupIDXAttrName) == nil)
+	}
 }

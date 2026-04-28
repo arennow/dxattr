@@ -48,7 +48,7 @@ public struct FocusNode: ~Copyable {
 
 			if let existingSidecarFile = try self.existingSidecarFile {
 				resolvedFile = existingSidecarFile
-			} else if !accessOptions.contains(.ignoreMatchupMismatches), try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) != nil {
+			} else if !accessOptions.contains(.ignoreMatchupMismatches), try Self.readMatchupIDString(from: self.node) != nil {
 				self.shouldClearFNMatchupsOnDeinit = true
 				throw Matchups.MissingSidecar()
 			} else {
@@ -138,8 +138,16 @@ public extension FocusNode {
 }
 
 private extension FocusNode {
+	/// Reads the matchupID string from the canonical xattr, falling back to the SMB name.
+	static func readMatchupIDString(from node: any Node) throws -> String? {
+		if let value = try node.extendedAttributeString(named: Self.matchupIDXAttrName) {
+			return value
+		}
+		return try node.extendedAttributeString(named: Self.smbMatchupIDXAttrName)
+	}
+
 	static func ensureMatchupID(on focusNode: any Node) throws -> UUID {
-		if let existingIDString = try focusNode.extendedAttributeString(named: Self.matchupIDXAttrName) {
+		if let existingIDString = try Self.readMatchupIDString(from: focusNode) {
 			if let uuid = UUID(uuidString: existingIDString) {
 				return uuid
 			} else {
@@ -155,11 +163,14 @@ private extension FocusNode {
 
 public extension FocusNode {
 	static let matchupIDXAttrName = "user.com.lithiumcube.dxattr.matchupID"
+	/// Read-only fallback for files whose matchup ID was written by an SMB client
+	/// as an alternate data stream xattr. Never written by this library.
+	static let smbMatchupIDXAttrName = "user.DosStream.com.lithiumcube.dxattr.matchupID:$DATA"
 
 	func fnMatchupsIfAny() throws -> Matchups? {
 		var outMatchups = Matchups.empty
 
-		if let matchupIDString = try self.node.extendedAttributeString(named: Self.matchupIDXAttrName) {
+		if let matchupIDString = try Self.readMatchupIDString(from: self.node) {
 			if let matchupID = UUID(uuidString: matchupIDString) {
 				outMatchups.matchupID = matchupID
 			} else {
