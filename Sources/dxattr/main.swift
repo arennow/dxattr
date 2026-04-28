@@ -34,20 +34,38 @@ extension DXAttrCommand {
 		var verbose = false
 
 		@Argument(help: "The file or directory to inspect.")
-		var file: String
+		var files: [String]
 
 		func run() throws {
-			var fn = try makeFocusNode(path: file)
-			fn.ignoreMismatches = self.ignoreMismatches
+			let multipleFiles = self.files.count > 1
+			for file in self.files {
+				var fn = try makeFocusNode(path: file)
+				fn.ignoreMismatches = self.ignoreMismatches
 
-			if self.verbose {
-				let attrs = try fn.dxattrs()
-				for attr in attrs {
-					print("\(attr.name): \(String(decoding: attr.value, as: UTF8.self))")
-				}
-			} else {
-				for metadata in try fn.dxattrMetadata() {
-					print("\(metadata.name): \(metadata.valueLength.usFormatted) bytes")
+				if self.verbose {
+					let attrs = try fn.dxattrs()
+
+					guard !attrs.isEmpty else { continue }
+					if multipleFiles {
+						print("\(file):")
+					}
+
+					for attr in attrs {
+						let line = "\(attr.name): \(String(decoding: attr.value, as: UTF8.self))"
+						print(multipleFiles ? "  \(line)" : line)
+					}
+				} else {
+					let metadatas = try fn.dxattrMetadata()
+
+					guard !metadatas.isEmpty else { continue }
+					if multipleFiles {
+						print("\(file):")
+					}
+
+					for metadata in metadatas {
+						let line = "\(metadata.name): \(metadata.valueLength.usFormatted) bytes"
+						print(multipleFiles ? "  \(line)" : line)
+					}
 				}
 			}
 		}
