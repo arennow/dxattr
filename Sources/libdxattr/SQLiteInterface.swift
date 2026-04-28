@@ -32,9 +32,13 @@ public struct SQLiteInterface: ~Copyable {
 extension SQLiteInterface {
 	func deserialize(from data: Data) throws {
 		let bufSize: sqlite3_uint64 = numericCast(data.count + 1_048_576) // + 1 MiB
-		let sqlManagedBuffer = sqlite3_malloc64(bufSize)
+		guard let sqlManagedBuffer = sqlite3_malloc64(bufSize) else {
+			throw SQLiteErrorCode.noMem
+		}
 		data.withUnsafeBytes { srcBuf in
-			_ = memcpy(sqlManagedBuffer, srcBuf.baseAddress, srcBuf.count)
+			if let baseAddress = srcBuf.baseAddress {
+				_ = memcpy(sqlManagedBuffer, baseAddress, srcBuf.count)
+			}
 		}
 
 		// `SQLITE_DESERIALIZE_RESIZEABLE` allows SQLite to resize the buffer as needed,

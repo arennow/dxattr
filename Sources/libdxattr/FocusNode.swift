@@ -25,7 +25,7 @@ public struct FocusNode: ~Copyable {
 				try self.node.removeExtendedAttribute(named: Self.matchupIDXAttrName)
 			}
 		} catch {
-			fputs("Warning: Failed to delete sidecar file for node '\(self.node.name)': \(error.localizedDescription)\n", stderr)
+			FileHandle.standardError.write(Data("Warning: Failed to delete sidecar file for node '\(self.node.name)': \(error.localizedDescription)\n".utf8))
 		}
 	}
 
@@ -154,7 +154,7 @@ private extension FocusNode {
 }
 
 public extension FocusNode {
-	static let matchupIDXAttrName = "com.lithiumcube.dxattr.matchupID"
+	static let matchupIDXAttrName = "user.com.lithiumcube.dxattr.matchupID"
 
 	func fnMatchupsIfAny() throws -> Matchups? {
 		var outMatchups = Matchups.empty

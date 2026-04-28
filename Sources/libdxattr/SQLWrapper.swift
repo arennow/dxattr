@@ -76,7 +76,7 @@ struct SQLWrapper: ~Copyable {
 			// a delete
 		} catch {
 			// We can't really do anything about this, and we don't want to crash, so we'll just ignore it
-			fputs("Warning: Failed to serialize database on deinit: \(error)\n", stderr)
+			FileHandle.standardError.write(Data("Warning: Failed to serialize database on deinit: \(error)\n".utf8))
 		}
 	}
 
