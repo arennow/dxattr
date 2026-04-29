@@ -165,7 +165,7 @@ public extension FocusNode {
 	static let matchupIDXAttrName = "user.com.lithiumcube.dxattr.matchupID"
 	/// Read-only fallback for files whose matchup ID was written by an SMB client
 	/// as an alternate data stream xattr. Never written by this library.
-	static let smbMatchupIDXAttrName = "user.DosStream.com.lithiumcube.dxattr.matchupID:$DATA"
+	static let smbMatchupIDXAttrName = "user.DosStream.user.com.lithiumcube.dxattr.matchupID:$DATA"
 
 	func fnMatchupsIfAny() throws -> Matchups? {
 		var outMatchups = Matchups.empty
