@@ -69,6 +69,21 @@ struct DXAttrCRUDTests {
 	}
 
 	@Test
+	func readSingleDXAttr() throws {
+		try self.withFN { fn in
+			try #expect(fn.dxattrValue(for: "name1") == String?.none)
+
+			try fn.setDXAttr(name: "name1", value: "value1")
+			try fn.setDXAttr(name: "name2", value: "value2")
+
+			try #expect(fn.dxattrValue(for: "name1") == "value1")
+			try #expect(fn.dxattrValue(for: "name2") == "value2")
+			try #expect(fn.dxattrValue(for: "name3") == String?.none)
+		}
+		try #expect(self.sidecarFileExists == true)
+	}
+
+	@Test
 	func removeDXAttr() throws {
 		try self.withFN { fn in
 			try fn.setDXAttr(name: "name1", value: "value1")

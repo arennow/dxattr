@@ -118,6 +118,16 @@ public extension FocusNode {
 		} ?? []
 	}
 
+	mutating func dxattrValue(for name: String) throws -> Data? {
+		try self.withSQLWrapper(accessOptions: []) { wrapper in
+			try wrapper.getAttribute(name: name)
+		}.flatMap(\.self)
+	}
+
+	mutating func dxattrValue(for name: String) throws -> String? {
+		try self.dxattrValue(for: name).flatMap { String(data: $0, encoding: .utf8) }
+	}
+
 	mutating func setDXAttr(name: String, value: some IntoData) throws {
 		try self.withSQLWrapper(accessOptions: [.createIfNeeded, .updateMatchupsIfNeeded]) { wrapper in
 			try wrapper.setAttribute(name: name, value: value.into())
